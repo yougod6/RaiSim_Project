@@ -69,6 +69,11 @@
         "vector": "cpp",
         "algorithm": "cpp",
         "*.tpp": "cpp",
-        "dense": "cpp"
-    }
+        "dense": "cpp",
+        "core": "cpp",
+        "specialfunctions": "cpp",
+        "sparse": "cpp",
+        "eigen": "cpp"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

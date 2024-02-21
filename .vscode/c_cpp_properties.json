@@ -7,7 +7,7 @@
                 "${WORKSPACE}/**",
                 "/Users/yushin/osqp/include/*",
                 "/usr/local/include/osqp",
-                "/usr/local/include/OsqpEigen/"
+                "/usr/local/include/OsqpEigen"
             ],
             "defines": [],
             "macFrameworkPath": [

@@ -54,10 +54,28 @@ int main(int argc, char* argv[]) {
   server.focusOn(go1);
   Eigen::VectorXd torqueFromInverseDynamics(go1->getDOF());
   const int totalT = 100000;
+  
+  Eigen::MatrixXd J_B_p = Eigen::MatrixXd::Zero(3, go1->getDOF());
+  go1->getDenseFrameJacobian("floating_base", J_B_p);
+  std::cout << "J_B_p sie is " << J_B_p.rows() << " by " << J_B_p.cols() << std::endl;
+  std::cout << "J_B_p is " << J_B_p << std::endl; 
+  Eigen::MatrixXd J_B_r = Eigen::MatrixXd::Zero(3, go1->getDOF());
+  go1->getDenseFrameRotationalJacobian("floating_base", J_B_r);
+  std::cout << "J_B_r sie is " << J_B_r.rows() << " by " << J_B_r.cols() << std::endl;
+  std::cout << "J_B_r is " << J_B_r << std::endl;
+  Eigen::MatrixXd J_B = Eigen::MatrixXd::Zero(6, go1->getDOF());
+
   for (int i=0; i<totalT; i++) {
 
     RS_TIMED_LOOP(world.getTimeStep()*1e6);
     std::vector<Eigen::Vector3d> axes(go1->getDOF()-6);
+
+    go1->getDenseFrameJacobian("floating_base", J_B_p);
+    go1->getDenseFrameRotationalJacobian("floating_base", J_B_r);
+    J_B.block(0, 0, 3, go1->getDOF()) = J_B_p; 
+    J_B.block(3, 0, 3, go1->getDOF()) = J_B_r;
+    std::cout << "J_B sie is " << J_B.rows() << " by " << J_B.cols() << std::endl;
+    std::cout << "J_B is " <<std::endl<< J_B << std::endl;
 
     // Index 0 is the base joint, so we start at 1
     for (int j=0; j<go1->getDOF()-6; j++)

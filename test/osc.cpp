@@ -3,6 +3,9 @@
 #include <matplot/matplot.h>
 
 
+Eigen::MatrixXd get_operational_space_inertia(Eigen::MatrixXd M, Eigen::MatrixXd J){
+    return (J*M.inverse()*J.transpose()).inverse();
+}
 
 Eigen::MatrixXd moor_penrose_pseudo_inverse(Eigen::MatrixXd A) {
     return A.transpose()*((A*A.transpose()).inverse());
@@ -67,7 +70,7 @@ Eigen::MatrixXd get_projected_J(Eigen::MatrixXd Jsys, Eigen::MatrixXd Msys){
 int main (int argc, char* argv[]) {
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
     raisim::World world;
-    world.setTimeStep(0.0001); //10kHz
+    world.setTimeStep(0.001); //1kHz
     // world.setERP(0,0);
     raisim::Vec<3> gravity = world.getGravity();
     auto go1 = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\go1\\go1.urdf");
@@ -98,12 +101,6 @@ int main (int argc, char* argv[]) {
     go1->setGeneralizedCoordinate(jointNominalConfig);
     go1->setGeneralizedForce(Eigen::VectorXd::Zero(go1->getDOF())); 
     
-    Eigen::MatrixXd jointPgain = Eigen::MatrixXd::Identity(12, 12);
-    Eigen::MatrixXd jointDgain = Eigen::MatrixXd::Identity(12, 12);
-    const double kp = 30.0, kd = 2*sqrt(kp);
-    jointPgain*=kp;
-    jointDgain*=kd;
-    
     Eigen::VectorXd generalizedForce = Eigen::VectorXd::Zero(go1->getDOF());
     Eigen::MatrixXd J_c_FR_ = Eigen::MatrixXd::Zero(3, go1->getDOF());
     Eigen::MatrixXd J_c_FL_ = Eigen::MatrixXd::Zero(3, go1->getDOF());
@@ -123,10 +120,6 @@ int main (int argc, char* argv[]) {
     std::cout << "start " << std::endl;
     
     go1->setName("go1");
-    go1->printOutBodyNamesInOrder();   
-    go1->printOutFrameNamesInOrder(); 
-    std::cout << go1->getName() << std::endl;
-    Eigen::VectorXd actuated_toq = Eigen::VectorXd::Zero(12);
     raisim::RaisimServer server(&world);
     server.launchServer();
     server.focusOn(go1);
@@ -140,8 +133,6 @@ int main (int argc, char* argv[]) {
     Eigen::MatrixXd J_B_dot = Eigen::MatrixXd::Zero(3, go1->getDOF()); 
     Eigen::MatrixXd J_c_prev = Eigen::MatrixXd::Zero(12, go1->getDOF()); 
     Eigen::MatrixXd J_c_dot = Eigen::MatrixXd::Zero(12, go1->getDOF()); 
-    Eigen::MatrixXd J_t = Eigen::MatrixXd::Zero(15, go1->getDOF());
-    Eigen::MatrixXd J_t_dot = Eigen::MatrixXd::Zero(15, go1->getDOF());
 
     raisim::Vec<3> base_position;
     Eigen::VectorXd desired_base_position = Eigen::VectorXd::Zero(3);
@@ -149,13 +140,12 @@ int main (int argc, char* argv[]) {
     Eigen::VectorXd desired_qddot_base = Eigen::VectorXd::Zero(18);
     Eigen::VectorXd desired_xddot = Eigen::VectorXd::Zero(3);
     Eigen::MatrixXd J_base = Eigen::MatrixXd::Zero(3, 18);
-    const int Kp_base = 10000;
+    const int Kp_base = 400;
     const int Kd_base = 2*sqrt(Kp_base);
     const int totalT = 100000;
 
 
     Eigen::VectorXd tau = Eigen::VectorXd::Zero(12);
-    Eigen::VectorXd tau_pd = Eigen::VectorXd::Zero(12);
     Eigen::VectorXd tau_contact = Eigen::VectorXd::Zero(12);
     Eigen::VectorXd tau_base = Eigen::VectorXd::Zero(12);
     Eigen::MatrixXd N1 = Eigen::MatrixXd::Zero(12,12);
@@ -170,96 +160,81 @@ int main (int argc, char* argv[]) {
     for (int i=0; i<totalT; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6);
 
-        if(i>20000 && i%50==0){
-            go1->getDenseFrameJacobian("FR_foot_fixed", J_c_FR_); // 3x18
-            go1->getDenseFrameJacobian("FL_foot_fixed", J_c_FL_); // 3x18
-            go1->getDenseFrameJacobian("RR_foot_fixed", J_c_RR_); // 3x18
-            go1->getDenseFrameJacobian("RL_foot_fixed", J_c_RL_); // 3x18
-            J_c_.block(0, 0, 3, go1->getDOF()) = J_c_FR_;
-            J_c_.block(3, 0, 3, go1->getDOF()) = J_c_FL_;
-            J_c_.block(6, 0, 3, go1->getDOF()) = J_c_RR_;
-            J_c_.block(9, 0, 3, go1->getDOF()) = J_c_RL_;
-            Eigen::MatrixXd Q =  QR_decompostion(J_c_);
-            // Eigen::MatrixXd Qc = Sc*Q;
-            // Eigen::MatrixXd Qu = Su*Q;
-            Eigen::MatrixXd S_tmp = Su*Q.transpose()*S.transpose();
-            Eigen::MatrixXd SQS = moor_penrose_pseudo_inverse(S_tmp);
+       
+        go1->getDenseFrameJacobian("FR_foot_fixed", J_c_FR_); // 3x18
+        go1->getDenseFrameJacobian("FL_foot_fixed", J_c_FL_); // 3x18
+        go1->getDenseFrameJacobian("RR_foot_fixed", J_c_RR_); // 3x18
+        go1->getDenseFrameJacobian("RL_foot_fixed", J_c_RL_); // 3x18
+        J_c_.block(0, 0, 3, go1->getDOF()) = J_c_FR_;
+        J_c_.block(3, 0, 3, go1->getDOF()) = J_c_FL_;
+        J_c_.block(6, 0, 3, go1->getDOF()) = J_c_RR_;
+        J_c_.block(9, 0, 3, go1->getDOF()) = J_c_RL_;
+        Eigen::MatrixXd Q =  QR_decompostion(J_c_);
+        // Eigen::MatrixXd Qc = Sc*Q;
+        // Eigen::MatrixXd Qu = Su*Q;
+        Eigen::MatrixXd S_tmp = Su*Q.transpose()*S.transpose();
+        Eigen::MatrixXd SQS = moor_penrose_pseudo_inverse(S_tmp);
 
-            M = go1->getMassMatrix().e();
-            qdot = go1->getGeneralizedVelocity().e();
-            qddot = go1->getGeneralizedAcceleration().e();
-            h = go1->getNonlinearities(gravity).e();
-            
-            go1->getDenseFrameJacobian("floating_base",J_B);
+        M = go1->getMassMatrix().e();
+        qdot = go1->getGeneralizedVelocity().e();
+        qddot = go1->getGeneralizedAcceleration().e();
+        h = go1->getNonlinearities(gravity).e();
         
-            go1->getBasePosition(base_position);
-            Eigen::VectorXd base_velocity = go1->getGeneralizedVelocity().e().head(3);
-            desired_base_position = make_base_trajectory((world.getWorldTime()));
-            desired_xddot = Kp_base*(desired_base_position - base_position.e().head(3)) - Kd_base*(base_velocity);
-            sphere1->setPosition(raisim::Vec<3>{desired_base_position(0), desired_base_position(1), desired_base_position(2)});
-            // sphere2->setPosition(raisim::Vec<3>{base_position(0), base_position(1), base_position(2)});
+        go1->getDenseFrameJacobian("floating_base",J_B);
+    
+        go1->getBasePosition(base_position);
+        Eigen::VectorXd base_velocity = go1->getGeneralizedVelocity().e().head(3);
+        desired_base_position = make_base_trajectory((world.getWorldTime()));
+        desired_xddot = Kp_base*(desired_base_position - base_position.e().head(3)) - Kd_base*(base_velocity);
+        sphere1->setPosition(raisim::Vec<3>{desired_base_position(0), desired_base_position(1), desired_base_position(2)});
+        // sphere2->setPosition(raisim::Vec<3>{base_position(0), base_position(1), base_position(2)});
 
-            // Eigen::VectorXd desired_xddot_base = Eigen::VectorXd::Zero(3);
-            // desired_xddot_base(0) = desired_xddot(0); // only x direction
+        // Eigen::VectorXd desired_xddot_base = Eigen::VectorXd::Zero(3);
+        // desired_xddot_base(0) = desired_xddot(0); // only x direction
 
-            J_B_dot = compute_Jdot(J_B, J_B_prev, world.getTimeStep());
-            J_c_dot = compute_Jdot(J_c_, J_c_prev, world.getTimeStep());
-            
-            J_t.block(0, 0, 12, go1->getDOF()) = J_c_;
-            J_t.block(12, 0, 3, go1->getDOF()) = J_B;
-
-            J_t_dot.block(0, 0, 12, go1->getDOF()) = J_c_dot;
-            J_t_dot.block(12, 0, 3, go1->getDOF()) = J_B_dot;
-
-            qdot = go1->getGeneralizedVelocity().e();
-            Eigen::VectorXd des_xddot = Eigen::VectorXd::Zero(15);
-            des_xddot.tail(3) = desired_xddot;
-            desired_qddot_base = moor_penrose_pseudo_inverse(J_t)*(des_xddot - J_t_dot*qdot);
-            // Eigen::VectorXd Z = Eigen::VectorXd::Zero(12);
-            // desired_qddot_contact = moor_penrose_pseudo_inverse(J_c_)*(Z - J_c_dot*qdot);
-
-            // tau_contact = (SQS)*Su*Q.transpose()*(M*desired_qddot_contact + h);
-            tau_base = (SQS)*Su*Q.transpose()*(M*desired_qddot_base + h);
-            Eigen::MatrixXd S_inv = get_inverse_seleciton_matrix(S, M);
-            Eigen::MatrixXd J = get_projected_J(J_c_,M);
-            Eigen::MatrixXd M_act = get_actuated_inertia(M, S);
-            N1 = get_nullspace(J, M_act);
-            // tau_base = N1.transpose()*tau_base;
-            J_B_prev = J_B;
-            J_c_prev = J_c_;
-            auto contacts = go1->getContacts();
-            // std::cout << "contacts : " << contacts.size() << std::endl;
-            // for (auto &contact : contacts) {
-            //     std::cout << "contact : " << contact.getPosition().e() << std::endl;
-            // }
-            // raisim::VecDyn vec(1);
-            // vec[0] = desired_base_position(0);
-        // graph->addDataPoints(world.getWorldTime(), vec);
-
-        }
+        J_B_dot = compute_Jdot(J_B, J_B_prev, world.getTimeStep());
+        J_c_dot = compute_Jdot(J_c_, J_c_prev, world.getTimeStep());
         
-        // tau = (Su*Q^T*S^T)^(-1)*Su*Q^T*[Mqddot + h]
-        // Eigen::VectorXd tau = (SQS)*Su*Q.transpose()*(M*qddot + h);
+        qdot = go1->getGeneralizedVelocity().e();
+        desired_qddot_base = moor_penrose_pseudo_inverse(J_B)*(desired_xddot - J_B_dot*qdot);
+        Eigen::VectorXd Z = Eigen::VectorXd::Zero(12);
+        desired_qddot_contact = moor_penrose_pseudo_inverse(J_c_)*(Z - J_c_dot*qdot);
+
+        tau_contact = (SQS)*Su*Q.transpose()*(M*desired_qddot_contact + h);
+        // tau_base = (SQS)*Su*Q.transpose()*(M*desired_qddot_base + h);
+        Eigen::MatrixXd S_inv = get_inverse_seleciton_matrix(S, M);
+
+
+        Eigen::MatrixXd J = get_projected_J(J_B,M);
+        Eigen::MatrixXd Jc_proj = get_projected_J(J_c_,M);
+        std::cout << __LINE__ << std::endl;
+        Eigen::MatrixXd M_act = get_actuated_inertia(M, S);
+        std::cout << __LINE__ << std::endl;
+        Eigen::MatrixXd Lambda = get_operational_space_inertia(M_act, J);
+        std::cout << __LINE__ << std::endl;
+        Eigen::MatrixXd J_inv = M_act.inverse()*J.transpose()*Lambda;
+        std::cout << "J_inv: " << J_inv.rows() << "x" << J_inv.cols() << std::endl;
+        std::cout << __LINE__ << std::endl;
+        // Eigen::MatrixXd nonlinearities  = J_inv.transpose()*h;
+        std::cout << __LINE__ << std::endl;
+        Eigen::MatrixXd F = Lambda*desired_xddot;
+        std::cout << __LINE__ << std::endl;
+        tau_base = J.transpose()*F;
+        std::cout << __LINE__ << std::endl;
+        N1 = get_nullspace(Jc_proj, M_act);
+        tau_base = N1.transpose()*tau_base;
+        J_B_prev = J_B;
+        J_c_prev = J_c_;
+       
         desired_base_x[i] = desired_base_position(0);
         base_x[i] = base_position.e().head(3)(0);
-        tau_pd = (jointPgain*(jointNominalConfig.tail(12) - go1->getGeneralizedCoordinate().e().tail(12)) - jointDgain*(go1->getGeneralizedVelocity().e().tail(12)));
         tau.setZero();
-        tau += tau_pd;
-        // tau += tau_contact;
+        tau += tau_contact;
         tau += tau_base;
-        // std::cout << "base " << base_position.e().head(3).transpose() << std::endl; 
-        // std::cout << "tau_pd : " << tau_pd.transpose() << std::endl;
-        // std::cout << "tau_contact : " << tau_contact.transpose() << std::endl;
-        // std::cout << "tau_base : " << tau_base.transpose() << std::endl;
-        
         generalizedForce.tail(12) = tau;
         go1->setGeneralizedForce(generalizedForce);
         server.integrateWorldThreadSafe();
     }
-    auto fig = plt::figure();   
-    auto ax = fig->current_axes();
-    plt::plot(ax,desired_base_x,"--r",base_x,"-b"); //plot the x,y
-    // plt::plot(base_x,"-b"); //plot the x,y
-    plt::show();
+    
     return 0;
 }

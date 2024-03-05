@@ -73,7 +73,8 @@
         "core": "cpp",
         "specialfunctions": "cpp",
         "sparse": "cpp",
-        "eigen": "cpp"
+        "eigen": "cpp",
+        "regex": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

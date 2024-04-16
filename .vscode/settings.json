@@ -74,7 +74,8 @@
         "specialfunctions": "cpp",
         "sparse": "cpp",
         "eigen": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "execution": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

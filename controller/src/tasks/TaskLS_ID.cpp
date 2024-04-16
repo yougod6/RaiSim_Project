@@ -3,6 +3,8 @@
 TaskLS_ID::TaskLS_ID(raisim::World* world, raisim::ArticulatedSystem* robot)
 {
     task_name_ = "Iverse Dynamics";
+    task_dim_ = 6; // 18 - 12 
+    var_dim_ = 30; // 18(qddot) + 12(torque)
     world_ = world;
     robot_ = robot;
     gravity_ = world_->getGravity();
@@ -18,8 +20,8 @@ TaskLS_ID::TaskLS_ID(raisim::World* world, raisim::ArticulatedSystem* robot)
     S_ = Eigen::MatrixXd::Zero(robot_->getDOF()-6, robot_->getDOF()); //12x18
     S_.block(0,6,12,12) = Eigen::MatrixXd::Identity(robot_->getDOF()-6,robot_->getDOF()-6);
 
-    A_ = Eigen::MatrixXd::Zero(6,30);
-    b_ = Eigen::VectorXd::Zero(6);
+    A_ = Eigen::MatrixXd::Zero(task_dim_,var_dim_);
+    b_ = Eigen::VectorXd::Zero(task_dim_);
 }
 
 TaskLS_ID::~TaskLS_ID(){}
@@ -41,13 +43,13 @@ void TaskLS_ID::updateMatrix(){
     J_c_.block(9, 0, 3, robot_->getDOF()) = J_c_RL_;
     QR_decomposition();
     Eigen::MatrixXd A_tmp = Eigen::MatrixXd::Zero(18, 30);
-    A_tmp.block(0, 0, 18, 18) = - M_;
-    A_tmp.block(0, 18, 18, 12) = S_.transpose();
+    A_tmp.block(0, 0, 18, 18) = M_;
+    A_tmp.block(0, 18, 18, 12) = -S_.transpose();
     A_ = Qu_.transpose()*A_tmp;
 }
 
 void TaskLS_ID::updateVector(){
-    b_ = (Qu_.transpose()*(robot_->getNonlinearities(gravity_).e()));
+    b_ = -(Qu_.transpose()*(robot_->getNonlinearities(gravity_).e()));
     // std::cout << "ID Vector Updated" << std::endl;
 }
 

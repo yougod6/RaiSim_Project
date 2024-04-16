@@ -19,6 +19,13 @@ int main (int argc, char* argv[]) {
                         -0.03, 0.2, -1.2,
                         0.03, -0.2, 1.2,
                         -0.03, -0.2, 1.2;
+
+    jointNominalConfig << 0.0, 0.0, 0.32, //base position
+                        0.7071068, 0.0, 0.0, 0.7071068, //base orientation(quaternion)
+                        0.03, 0.1, -1.4, //
+                        -0.03, 0.1, -1.4,
+                        0.03, -0.1, 1.4,
+                        -0.03, -0.1, 1.4;
     jointVelocityTarget.setZero();
 
 

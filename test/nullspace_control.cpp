@@ -23,9 +23,9 @@ Eigen::VectorXd make_base_trajectory(const double time){
                     0.000455424 ,
                     0.345183,
                     0,0,0;
-   
     return desired_q_B_;
 }
+
 
 Eigen::MatrixXd compute_Jdot(Eigen::MatrixXd J, Eigen::MatrixXd J_prev, const double dt){
     return (J - J_prev)/dt;
@@ -65,7 +65,7 @@ int main (int argc, char* argv[]) {
     sphere1->setBodyType(raisim::BodyType::KINEMATIC);
     sphere1->setAppearance("green");
     sphere1->setPosition(raisim::Vec<3>{-0.00270028, 0.000455424, 0.345183});
-    
+  
     go1->setComputeInverseDynamics(true);
     auto ground = world.addGround();
     Eigen::VectorXd jointNominalConfig(go1->getGeneralizedCoordinateDim());
@@ -127,7 +127,7 @@ int main (int argc, char* argv[]) {
     Eigen::VectorXd desired_xddot_base = Eigen::VectorXd::Zero(6);
     Eigen::VectorXd des_xddot = Eigen::VectorXd::Zero(18);
 
-    const int Kp_base_position = 100;
+    const int Kp_base_position = 200;
     const int Kp_base_orientation = 100;
     const int Kd_base_position = 2*sqrt(Kp_base_position);
     const int Kd_base_orientation = 2*sqrt(Kp_base_orientation);
@@ -138,13 +138,13 @@ int main (int argc, char* argv[]) {
     Kp_base.block(3,3,3,3) = Kp_base_orientation*Eigen::MatrixXd::Identity(3,3);
     Kd_base.block(0,0,3,3) = Kd_base_position*Eigen::MatrixXd::Identity(3,3);
     Kd_base.block(3,3,3,3) = Kd_base_orientation*Eigen::MatrixXd::Identity(3,3);
-    const int totalT = 10000;
+    const int totalT = 100000; //100s
 
     Eigen::VectorXd tau = Eigen::VectorXd::Zero(12);
     Eigen::VectorXd tau_pd = Eigen::VectorXd::Zero(12);
     Eigen::VectorXd tau_contact = Eigen::VectorXd::Zero(12);
     Eigen::VectorXd tau_base = Eigen::VectorXd::Zero(12);
-    Eigen::MatrixXd N1 = Eigen::MatrixXd::Zero(12,12);
+    Eigen::MatrixXd N1 = Eigen::MatrixXd::Zero(18,18);
     
     namespace plt = matplot;
     std::vector<double> time = plt::linspace(0, totalT);
@@ -175,12 +175,11 @@ int main (int argc, char* argv[]) {
         Eigen::MatrixXd Q =  QR_decompostion(J_c_);
         Eigen::MatrixXd S_tmp = Su*Q.transpose()*S.transpose();
         Eigen::MatrixXd SQS = moor_penrose_pseudo_inverse(S_tmp);
-
+    
         M = go1->getMassMatrix().e();
         qdot = go1->getGeneralizedVelocity().e();
         qddot = go1->getGeneralizedAcceleration().e();
         h = go1->getNonlinearities(gravity).e();
-        
         J_B.block(0,0,6,6) = Eigen::MatrixXd::Identity(6,6);
         go1->getBasePosition(base_position);
         go1->getBaseOrientation(base_quat);
@@ -195,10 +194,9 @@ int main (int argc, char* argv[]) {
         base_pose.tail(3) = euler;
         Eigen::VectorXd base_velocity = go1->getGeneralizedVelocity().e().head(6);
         desired_base_pose = make_base_trajectory((world.getWorldTime()));
-
         desired_xddot_base = Kp_base*(desired_base_pose - base_pose) - Kd_base*(base_velocity);
         sphere1->setPosition(raisim::Vec<3>{desired_base_pose(0), desired_base_pose(1), desired_base_pose(2)});
-
+      
         J_c_dot = compute_Jdot(J_c_, J_c_prev, world.getTimeStep());
         
         qdot = go1->getGeneralizedVelocity().e();
@@ -211,7 +209,9 @@ int main (int argc, char* argv[]) {
         // N1 = get_nullspace(J_B,M);
         // desired_qddot_contact = moor_penrose_pseudo_inverse(J_c_*N1)*(Z - J_c_dot*qdot);
         // desired_qddot_base = moor_penrose_pseudo_inverse(J_B)*(desired_xddot_base - J_B_dot*qdot);
-
+        raisim::Vec<3> FR_foot;
+        go1->getFramePosition("FR_foot_fixed", FR_foot);
+        std::cout << "FR_foot: " << FR_foot.e().transpose() << std::endl;
         Eigen::VectorXd des_qddot = Eigen::VectorXd::Zero(18);
         Eigen::VectorXd tau_total = Eigen::VectorXd::Zero(18);
         
@@ -219,9 +219,8 @@ int main (int argc, char* argv[]) {
         des_qddot += N1*desired_qddot_base;
 
         tau_total = (SQS)*Su*Q.transpose()*(M*des_qddot + h);
-     
+        
         J_c_prev = J_c_;
-    
         desired_base_x[i] = desired_base_pose(0);
         desired_base_y[i] = desired_base_pose(1);
         desired_base_z[i] = desired_base_pose(2);

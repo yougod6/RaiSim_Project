@@ -33,3 +33,12 @@ Eigen::VectorXd TaskLS::getVector()
     return b_;
 }
 
+int TaskLS::getTaskDim()
+{
+    return task_dim_;
+}
+
+int TaskLS::getVarDim()
+{
+    return var_dim_;
+}

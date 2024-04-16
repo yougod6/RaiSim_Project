@@ -3,6 +3,8 @@
 TaskLS_StationaryFeet::TaskLS_StationaryFeet(raisim::World* world, raisim::ArticulatedSystem* robot)
 {
     task_name_ = "Stationary Feet";
+    task_dim_ = 12;
+    var_dim_ = 30; // 18(qddot) + 12(torque)
     world_ = world;
     robot_ = robot;
     gravity_ = world_->getGravity();
@@ -16,9 +18,8 @@ TaskLS_StationaryFeet::TaskLS_StationaryFeet(raisim::World* world, raisim::Artic
     dq_ = Eigen::VectorXd::Zero(robot_->getDOF());
     
 
-    // To Be Fixed
-    A_ = Eigen::MatrixXd::Zero(12,42);
-    b_ = Eigen::VectorXd::Zero(robot_->getDOF());
+    A_ = Eigen::MatrixXd::Zero(task_dim_,var_dim_);
+    b_ = Eigen::VectorXd::Zero(task_dim_);
 
 }
 
@@ -49,9 +50,9 @@ void TaskLS_StationaryFeet::updateMatrix()
 {
     // std::cout << "Stationary Feet Matrix PreUpdated" << std::endl;
     // update_J_c();
-    update_dJ_c();
+    update_dJ_c(world_->getTimeStep());
    
-    A_.block(0, 0, 12, 18) = J_c_;
+    A_.block(0,0,task_dim_,18) = J_c_;
 
     // std::cout << "Stationary Feet Matrix Updated" << std::endl;
 }

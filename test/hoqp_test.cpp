@@ -1,7 +1,5 @@
 #include "raisim/World.hpp"
 #include "raisim/RaisimServer.hpp"
-
-#include "TaskLS.hpp"
 #include "TaskLS_ID.hpp"
 #include "TaskLS_StationaryFeet.hpp"
 #include "TaskLS_MoveBase.hpp"

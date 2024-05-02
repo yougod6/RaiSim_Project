@@ -67,45 +67,42 @@ void contact_scheduler(std::vector<bool> contact_status){
     contact_status[2] = true;
     contact_status[3] = true;
 }
-    
-Eigen::MatrixXd get_contact_jacobian(std::vector<bool> contact_status,raisim::ArticulatedSystem *robot){
-    // contact 개수 (contact_status의 true 개수)
-    std::vector<int> contact_idx;
-    for(bool contact : contact_status){
-        if(contact){
-            contact_idx.push_back(contact);
-        }
-    }
-    int contact_num = contact_idx.size();
-    Eigen::MatrixXd J_c = Eigen::MatrixXd::Zero(3*contact_num, 18);
 
-    // Contact Jacobian
-    int stacked_num = 0;    
-    // for(int i=0; i<contact_num; i++){
-    //     if(contact_idx[i] == 0){
-    //         robot->getDenseFrameJacobian("FR_foot_fixed", J_c.block(stacked_num,0,3,18));
-    //         stacked_num += 3;
-    //     }
-    //     else if(contact_idx[i] == 1){
-    //         robot->getDenseFrameJacobian("FL_foot_fixed", J_c.block(stacked_num,0,3,18));
-    //         stacked_num += 3;
-    //     }
-    //     else if(contact_idx[i] == 2){
-    //         robot->getDenseFrameJacobian("RR_foot_fixed", J_c.block(stacked_num,0,3,18));
-    //         stacked_num += 3;
-    //     }
-    //     else if(contact_idx[i] == 3){
-    //         robot->getDenseFrameJacobian("RL_foot_fixed", J_c.block(stacked_num,0,3,18));
-    //         stacked_num += 3;
-    //     }
-    // }
-    return J_c;
+Eigen::VectorXd rotMatToRotVec_solution(Eigen::MatrixXd& R) {
+    double th = std::acos(0.5 * (R(0, 0) + R(1, 1) + R(2, 2) - 1));
+
+    Eigen::Vector3d n;
+    if (std::abs(th) < std::numeric_limits<double>::epsilon()) {
+        n.setZero();
+    } else {
+        n << 1/(2*sin(th))*(R(2, 1) - R(1, 2)),
+             1/(2*sin(th))*(R(0, 2) - R(2, 0)),
+             1/(2*sin(th))*(R(1, 0) - R(0, 1));
+    }
+
+    return th * n;
+}
+
+Eigen::MatrixXd eulerXyzToRotMat(Eigen::VectorXd& e){
+    Eigen::MatrixXd Rx = Eigen::MatrixXd::Zero(3,3);
+    Eigen::MatrixXd Ry = Eigen::MatrixXd::Zero(3,3);
+    Eigen::MatrixXd Rz = Eigen::MatrixXd::Zero(3,3);
+    Rx << 1, 0, 0,
+          0, cos(e(0)), -sin(e(0)),
+          0, sin(e(0)), cos(e(0));
+    Ry << cos(e(1)), 0, sin(e(1)),
+            0, 1, 0,
+            -sin(e(1)), 0, cos(e(1));
+    Rz << cos(e(2)), -sin(e(2)), 0,
+            sin(e(2)), cos(e(2)), 0,
+            0, 0, 1;
+    return Rx*Ry*Rz;
 }
 
 int main (int argc, char* argv[]) {
     raisim::World world;
     auto ground = world.addGround();
-    world.setTimeStep(0.0001); //10kHz
+    world.setTimeStep(0.00001); //10kHz
 
     raisim::Vec<3> gravity = world.getGravity();
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
@@ -165,9 +162,9 @@ int main (int argc, char* argv[]) {
     jointNominalConfig << 0.0, 0.0, 0.355, //base position
                         1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
                         0.02, 0.2, -1.8, //
-                        -0.03, 0.2, -1.2,
-                        0.03, -0.2, 1.2,
-                        -0.03, -0.2, 1.2;
+                        0.0, 0.6, -1.3,
+                        0.0, 0.6, -1.3,
+                        0.0, 0.6, -1.3;
 
     go1->setGeneralizedCoordinate(jointNominalConfig);
 
@@ -299,13 +296,22 @@ int main (int argc, char* argv[]) {
 
         // Desired Trajectory
         desired_base_pose = make_base_trajectory((world.getWorldTime()));
+        Eigen::VectorXd desired_base_euler = desired_base_pose.tail(3);
+        Eigen::MatrixXd R_IB_des = eulerXyzToRotMat(desired_base_euler);
+        raisim::Mat<3,3> rot;
+        go1->getBaseOrientation(rot);
+        Eigen::MatrixXd R_err = R_IB_des*rot.e().transpose();
+        Eigen::VectorXd rot_err = rotMatToRotVec_solution(R_err);
+        Eigen::VectorXd XB_err = Eigen::VectorXd::Zero(6);
+        XB_err.head(3) = desired_base_pose.head(3) - base_pose.head(3);
+        XB_err.tail(3) = rot_err;
         sphere_body->setPosition(raisim::Vec<3>{desired_base_pose(0), desired_base_pose(1), desired_base_pose(2)});
 
         bezier_position = make_bezier_trajectory(bezier_points, (world.getWorldTime()));
         sphere_traj->setPosition(raisim::Vec<3>{bezier_position(0), bezier_position(1), bezier_position(2)});
 
         // Get Desired Base and Foot Acceleration (represented in world frame)
-        desired_xddot_base = Kp_base*(desired_base_pose - base_pose) - Kd_base*(base_velocity);
+        desired_xddot_base = Kp_base*(XB_err) - Kd_base*(base_velocity);
         desired_xddot_foot = Kp_foot*(bezier_position - FR_foot_position.e()) - Kd_foot*(FR_foot_velocity.e());
 
         // Stack Jacobians

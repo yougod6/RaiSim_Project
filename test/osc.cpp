@@ -25,8 +25,8 @@ Eigen::VectorXd make_base_trajectory(const double time){
     //                 0,0,0.7071068;
 
     desired_q_B_ << -0.00270028,
-                    0.000455424  + amplitude*sin(2*M_PI*freq*time),
-                    0.32,
+                    0.000455424+ amplitude*sin(2*M_PI*freq*time),
+                    0.32  ,
                     0,0,0;
     return desired_q_B_;
 }

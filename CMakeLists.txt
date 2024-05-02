@@ -27,6 +27,11 @@ set(testHOQP_SRCS
     controller/src/tasks/TaskLS_MoveBase.cpp)
 set(testQP_SRCS
     test/osqp_test.cpp)
+set(testMPC_SRCS
+    test/convex_mpc.cpp
+    controller/src/ConvexMPC.cpp
+    controller/src/OsqpEigenSolver.cpp
+    utils/Utils.cpp)
 include(FetchContent)
 
 FetchContent_Declare(matplotplusplus
@@ -59,6 +64,7 @@ add_executable(joint_impedance ${joint_impedance_SRCS})
 add_executable(testHOQP ${testHOQP_SRCS})
 add_executable(testQP ${testQP_SRCS})
 add_executable(base_qp ${base_qp_SRCS})
+add_executable(testMPC ${testMPC_SRCS})
 
 # find_package(PythonLibs 2.7)
 target_link_libraries(jointImpedance PUBLIC raisim::raisim)
@@ -68,13 +74,15 @@ target_link_libraries(osc PUBLIC raisim::raisim matplot)
 target_link_libraries(nullspace PUBLIC raisim::raisim matplot)
 target_link_libraries(bezier_test PUBLIC raisim::raisim matplot)
 target_link_libraries(base_qp PUBLIC raisim::raisim)
-
 target_link_libraries(testQP PRIVATE OsqpEigen::OsqpEigen)
 target_link_libraries(base_qp PRIVATE OsqpEigen::OsqpEigen)
+target_link_libraries(testMPC PUBLIC raisim::raisim)
 
 target_link_libraries(testHOQP PUBLIC raisim::raisim)
 target_link_libraries(testHOQP PRIVATE osqp::osqp)
 target_link_libraries(testHOQP PRIVATE OsqpEigen::OsqpEigen)
+target_link_libraries(testMPC PRIVATE osqp::osqp)
+target_link_libraries(testMPC PRIVATE OsqpEigen::OsqpEigen)
 
 if(NOT WIN32)
   target_link_libraries(jointImpedance PUBLIC pthread)

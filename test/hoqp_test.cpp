@@ -18,12 +18,12 @@ int main (int argc, char* argv[]) {
     Eigen::VectorXd jointNominalConfig(go1->getGeneralizedCoordinateDim());
     Eigen::VectorXd jointVelocityTarget(go1->getDOF());
 
-    jointNominalConfig << 0.0, 0.0, 0.35, //base position
+    jointNominalConfig << 0.0, 0.0, 0.42, //base position
                         1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
-                        0.03, 0.2, -1.2, //
-                        -0.03, 0.2, -1.2,
-                        0.03, -0.2, 1.2,
-                        -0.03, -0.2, 1.2;
+                        0.0, 0.6, -1.3, //
+                        0.0, 0.6, -1.3,
+                        0.0, 0.6, -1.3,
+                        0.0, 0.6, -1.3;
 
     jointVelocityTarget.setZero();
 

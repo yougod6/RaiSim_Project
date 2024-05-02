@@ -15,17 +15,17 @@ int main (int argc, char* argv[]) {
 
     jointNominalConfig << 0.0, 0.0, 0.54, //base position
                         1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
-                        0.03, 0.2, -1.2, //
-                        -0.03, 0.2, -1.2,
-                        0.03, -0.2, 1.2,
-                        -0.03, -0.2, 1.2;
+                        0.0, 0.6, -1.3, //
+                        0.0, 0.6, -1.3,
+                        0.0, 0.6, -1.3,
+                        0.0, 0.6, -1.3;
 
-    jointNominalConfig << 0.0, 0.0, 0.32, //base position
-                        0.7071068, 0.0, 0.0, 0.7071068, //base orientation(quaternion)
-                        0.03, 0.1, -1.4, //
-                        -0.03, 0.1, -1.4,
-                        0.03, -0.1, 1.4,
-                        -0.03, -0.1, 1.4;
+    // jointNominalConfig << 0.0, 0.0, 0.32, //base position
+    //                     0.7071068, 0.0, 0.0, 0.7071068, //base orientation(quaternion)
+    //                     0.03, 0.1, -1.4, //
+    //                     -0.03, 0.1, -1.4,
+    //                     0.03, -0.1, 1.4,
+    //                     -0.03, -0.1, 1.4;
     jointVelocityTarget.setZero();
 
 
@@ -50,7 +50,9 @@ int main (int argc, char* argv[]) {
     for (int i=0; i<totalT; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6);
         Eigen::VectorXd actuated_toq = Eigen::VectorXd::Zero(12);
-        std::cout << go1->getMassMatrix().e()  << std::endl;
+        raisim::Vec<3> base_position;
+        go1->getFramePosition("floating_base", base_position);
+        std::cout << "base_position: " << base_position.e().transpose() << std::endl;
         actuated_toq += go1->getNonlinearities(gravity).e().tail(12);
         actuated_toq += jointPgain*(jointNominalConfig.tail(12) - go1->getGeneralizedCoordinate().e().tail(12)) - jointDgain*(go1->getGeneralizedVelocity().e().tail(12));
         generalizedForce.tail(12) = actuated_toq;

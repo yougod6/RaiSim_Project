@@ -15,6 +15,7 @@ void OsqpEigenSolver::init(Eigen::MatrixXd& P, Eigen::VectorXd& q,bool verbose){
     solver_.data()->setNumberOfConstraints(0);   
     solver_.data()->setHessianMatrix(P_);
     solver_.data()->setGradient(q);
+    solver_.settings()->setWarmStart(true);
 
     solver_.settings()->setVerbosity(verbose);
    

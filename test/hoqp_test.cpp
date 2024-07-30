@@ -3,7 +3,9 @@
 #include "TaskLS_ID.hpp"
 #include "TaskLS_StationaryFeet.hpp"
 #include "TaskLS_MoveBase.hpp"
+#include "TaskLS_EnergyOpt.hpp"
 #include "HOQP.hpp" 
+#include <memory>
 
 
 int main (int argc, char* argv[]) {
@@ -34,15 +36,19 @@ int main (int argc, char* argv[]) {
     go1->printOutFrameNamesInOrder();
     // std::cout << "generalizedCoordinate : " <<go1->getGeneralizedCoordinate().e().size() <<std::endl;
     // std::cout << "generalizedVelocity : " <<go1->getGeneralizedVelocity().e().size() <<std::endl;
-    TaskLS *task1 = new TaskLS_ID(&world, go1);
-    TaskLS *task2 = new TaskLS_StationaryFeet(&world, go1);
-    TaskLS *task3 = new TaskLS_MoveBase(&world, go1);
-    HOQP* hoqp = new HOQP();
-    hoqp->addTask(task1);
-    hoqp->addTask(task2);
-    hoqp->addTask(task3);
-
-    // hoqp->init();
+    std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(&world, go1);
+    std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(&world, go1);
+    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_MoveBase>(&world, go1);
+    std::unique_ptr<TaskLS> task4 = std::make_unique<TaskLS_EnergyOpt>(&world, go1);
+    std::unique_ptr<HOQP> hoqp = std::make_unique<HOQP>();
+    hoqp->addTask(task1.get());
+    hoqp->addTask(task2.get());
+    hoqp->addTask(task3.get());
+    hoqp->addTask(task4.get());
+    Eigen::VectorXd solution_vector;
+    Eigen::VectorXd qddot;
+    Eigen::VectorXd tau;
+    Eigen::VectorXd g;
     raisim::RaisimServer server(&world);
     server.launchServer();
     server.focusOn(go1);
@@ -52,19 +58,14 @@ int main (int argc, char* argv[]) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6);
       
         hoqp->solveAllTasks();
-        Eigen::VectorXd solution_vector = hoqp->getSolution();
+        solution_vector = hoqp->getSolution();
        
-        Eigen::VectorXd qddot = solution_vector.head(18);
+        qddot = solution_vector.head(18);
         
-        Eigen::VectorXd tau = solution_vector.tail(12);
-        Eigen::VectorXd g = go1->getNonlinearities(gravity).e();
+        tau = solution_vector.tail(12);
+        g = go1->getNonlinearities(gravity).e();
 
         generalizedForce.tail(12) = tau;
-
-        // generalizedForce.tail(12) = tau;
-        // generalizedForce.tail(12) += base_toq.tail(12);
-        // std::cout << "torque : " << generalizedForce.tail(12).transpose() << std::endl;
-
         go1->setGeneralizedForce(generalizedForce);
         
         server.integrateWorldThreadSafe();

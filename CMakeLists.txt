@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(raisim_examples LANGUAGES CXX)
 
 set(raisim_DIR "/Users/yushin/raisim_build/lib/cmake/raisim")
+set(EQUALITY_TASKS_PATH controller/src/tasks/Equality)
 
 set(jointImpedance_SRCS test/jointImpedance.cpp controller/src/includeTest.cpp)
 set(id_osc_SRCS test/id_osc.cpp)
@@ -14,17 +15,20 @@ set(base_qp_SRCS
     controller/src/HOQP.cpp
     controller/src/OsqpEigenSolver.cpp
     controller/src/tasks/TaskLS.cpp
-    controller/src/tasks/TaskLS_ID.cpp
-    controller/src/tasks/TaskLS_StationaryFeet.cpp
-    controller/src/tasks/TaskLS_MoveBase.cpp)
+    ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MoveBase.cpp
+    utils/Utils.cpp)
 set(testHOQP_SRCS 
     test/hoqp_test.cpp
     controller/src/OsqpEigenSolver.cpp
     controller/src/HOQP.cpp
     controller/src/tasks/TaskLS.cpp
-    controller/src/tasks/TaskLS_ID.cpp
-    controller/src/tasks/TaskLS_StationaryFeet.cpp
-    controller/src/tasks/TaskLS_MoveBase.cpp)
+    ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MoveBase.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_EnergyOpt.cpp
+    utils/Utils.cpp)
 set(testQP_SRCS
     test/osqp_test.cpp)
 set(testMPC_SRCS
@@ -32,6 +36,32 @@ set(testMPC_SRCS
     controller/src/ConvexMPC.cpp
     controller/src/OsqpEigenSolver.cpp
     utils/Utils.cpp)
+set(test_z1_spawn_SRCS test/z1_spawn.cpp utils/Utils.cpp)
+set(test_wbc_legged_arm_SRCS test/wbc_legged_arm.cpp
+    controller/src/OsqpEigenSolver.cpp
+    controller/src/HOQP.cpp
+    controller/src/HOQP_Slack.cpp
+    controller/src/tasks/TaskLS.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MoveBase.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryEE.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MinMotion.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_EnergyOpt.cpp
+    utils/Utils.cpp)
+set(test_utils_SRCS test/utils_test.cpp utils/Utils.cpp)
+set(test_HOQP_slack_SRCS test/hoqp_slack_test.cpp
+    controller/src/OsqpEigenSolver.cpp
+    controller/src/HOQP_Slack.cpp
+    controller/src/tasks/TaskLS.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MoveBase.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryEE.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MinMotion.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_EnergyOpt.cpp
+    utils/Utils.cpp
+    )
 include(FetchContent)
 
 FetchContent_Declare(matplotplusplus
@@ -50,55 +80,45 @@ find_package(matplot++ REQUIRED)
 find_package(osqp REQUIRED)
 find_package(OsqpEigen REQUIRED)
 
-
 include_directories (${EIGEN3_INCLUDE_DIRS})
 include_directories (controller/include)
 include_directories (controller/include/tasks)
+include_directories (controller/include/tasks/Equality)
+include_directories(utils)
 
-add_executable(jointImpedance ${jointImpedance_SRCS})
-add_executable(id_osc ${id_osc_SRCS})
-add_executable(osc ${osc_SRCS})
-add_executable(nullspace ${nullspace_SRCS})
-add_executable(bezier_test ${bezier_test_SRCS})
-add_executable(joint_impedance ${joint_impedance_SRCS})
-add_executable(testHOQP ${testHOQP_SRCS})
-add_executable(testQP ${testQP_SRCS})
-add_executable(base_qp ${base_qp_SRCS})
-add_executable(testMPC ${testMPC_SRCS})
+# 실행 파일 추가 및 라이브러리 링크를 위한 함수 정의 
+function(add_raisim_executable target sources)
+    add_executable(${target} ${sources})
+    target_link_libraries(${target} PUBLIC raisim::raisim)
+    if(NOT WIN32)
+        target_link_libraries(${target} PUBLIC pthread)
+    else()
+        target_link_libraries(${target} PUBLIC Ws2_32 Winmm)
+    endif()
+    target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+endfunction()
 
-# find_package(PythonLibs 2.7)
-target_link_libraries(jointImpedance PUBLIC raisim::raisim)
-target_link_libraries(joint_impedance PUBLIC raisim::raisim)
-target_link_libraries(id_osc PUBLIC raisim::raisim matplot)
-target_link_libraries(osc PUBLIC raisim::raisim matplot)
-target_link_libraries(nullspace PUBLIC raisim::raisim matplot)
-target_link_libraries(bezier_test PUBLIC raisim::raisim matplot)
-target_link_libraries(base_qp PUBLIC raisim::raisim)
-target_link_libraries(testQP PRIVATE OsqpEigen::OsqpEigen)
-target_link_libraries(base_qp PRIVATE OsqpEigen::OsqpEigen)
-target_link_libraries(testMPC PUBLIC raisim::raisim)
+# 특정 링크 요구 사항을 처리하는 함수 정의
+function(add_custom_executable target sources libs)
+    add_raisim_executable(${target} "${sources}")
+    foreach(lib IN LISTS libs)
+        target_link_libraries(${target} PRIVATE ${lib})
+    endforeach()
+endfunction()
 
-target_link_libraries(testHOQP PUBLIC raisim::raisim)
-target_link_libraries(testHOQP PRIVATE osqp::osqp)
-target_link_libraries(testHOQP PRIVATE OsqpEigen::OsqpEigen)
-target_link_libraries(testMPC PRIVATE osqp::osqp)
-target_link_libraries(testMPC PRIVATE OsqpEigen::OsqpEigen)
-
-if(NOT WIN32)
-  target_link_libraries(jointImpedance PUBLIC pthread)
-  target_link_libraries(joint_impedance PUBLIC pthread)
-  target_link_libraries(testHOQP PUBLIC pthread)
-
-else()
-  target_link_libraries(jointImpedance PUBLIC Ws2_32 Winmm)
-  target_link_libraries(joint_impedance PUBLIC Ws2_32 Winmm)
-  target_link_libraries(testHOQP PUBLIC Ws2_32 Winmm)
-
-endif()
-
-target_include_directories(jointImpedance PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(testHOQP PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(base_qp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(testQP PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
+# 함수를 사용하여 실행 파일 추가
+add_raisim_executable(jointImpedance "${jointImpedance_SRCS}")
+add_raisim_executable(joint_impedance "${joint_impedance_SRCS}")
+add_custom_executable(id_osc "${id_osc_SRCS}" "matplot")
+add_custom_executable(osc "${osc_SRCS}" "matplot")
+add_custom_executable(nullspace "${nullspace_SRCS}" "matplot")
+add_custom_executable(bezier_test "${bezier_test_SRCS}" "matplot")
+add_custom_executable(testQP "${testQP_SRCS}" "OsqpEigen::OsqpEigen")
+add_custom_executable(base_qp "${base_qp_SRCS}" "OsqpEigen::OsqpEigen")
+add_custom_executable(testMPC "${testMPC_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
+add_raisim_executable(test_z1_spawn "${test_z1_spawn_SRCS}")
+add_custom_executable(test_wbc_legged_arm "${test_wbc_legged_arm_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
+add_custom_executable(testHOQP "${testHOQP_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
+add_custom_executable(test_utils "${test_utils_SRCS}" "")
+add_custom_executable(test_HOQP_slack "${test_HOQP_slack_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/rsc DESTINATION ${CMAKE_BINARY_DIR})

@@ -22,6 +22,7 @@ void HOQP::addTask(TaskLS* task)
 
 void HOQP::init()
 {
+    equality_contraints_dim_=0;
     if(task_num_<1){
         std::cout << "No task added" << std::endl;
         return;
@@ -38,10 +39,20 @@ void HOQP::init()
     ub_eqs_ = Eigen::VectorXd::Zero(equality_contraints_dim_);
 }
 
-double HOQP::getTaskNum()
+int HOQP::getTaskNum()
 {
     return task_num_;
 }   
+
+int HOQP::getEqualityConstraintsDim()
+{
+    return equality_contraints_dim_;
+}
+
+int HOQP::getVarDim()
+{
+    return var_dim_;
+}
 
 void HOQP::solve()
 {

@@ -7,6 +7,14 @@ Eigen::MatrixXd moor_penrose_pseudo_inverse(Eigen::MatrixXd A) {
     return At*((A*At).inverse());
 }
 
+Eigen::MatrixXd damped_pseudo_inverse(Eigen::MatrixXd A) {
+    Eigen::MatrixXd At = A.transpose();
+    int row_size = A.rows();
+    Eigen::MatrixXd Ir = Eigen::MatrixXd::Identity(row_size,row_size);
+    double eps = 0.01;
+    return At*((A*At + eps*Ir).inverse());
+}
+
 Eigen::MatrixXd weighted_pseudo_inverse(Eigen::MatrixXd J, Eigen::MatrixXd W) {
     Eigen::MatrixXd JT = J.transpose();
     return (JT*W*J).inverse()*JT*W;
@@ -102,7 +110,7 @@ Eigen::MatrixXd eulerXyzToRotMat(Eigen::VectorXd& e){
 int main (int argc, char* argv[]) {
     raisim::World world;
     auto ground = world.addGround();
-    world.setTimeStep(0.00001); //10kHz
+    world.setTimeStep(0.001); //10kHz
 
     raisim::Vec<3> gravity = world.getGravity();
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
@@ -340,7 +348,7 @@ int main (int argc, char* argv[]) {
         W.block(12,12,6,6) = base_weight*Eigen::MatrixXd::Identity(6,6);
 
         // des_qddot = weighted_pseudo_inverse(J_t,W)*(des_xddot - J_t_dot*qdot);
-        des_qddot = moor_penrose_pseudo_inverse(J_t)*(des_xddot - J_t_dot*qdot);
+        des_qddot = damped_pseudo_inverse(J_t)*(des_xddot - J_t_dot*qdot);
 
         // QR Decomposition
         Eigen::MatrixXd J_c_T = J_c_.transpose(); // 18x9

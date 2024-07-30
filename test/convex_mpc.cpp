@@ -3,21 +3,15 @@
 #include "ConvexMPC.hpp"
 #include "OsqpEigenSolver.hpp"
 
-Eigen::VectorXd make_base_vel_trajectory(const double time,const double dt){
-    const double amplitude = 0.15; //0.15
+Eigen::VectorXd make_base_vel_trajectory(const double time){
+    const double amplitude = 0.15;
     const double freq = 0.5;
 
     Eigen::VectorXd desired_v_B_ = Eigen::VectorXd::Zero(3);
-    // for(int i=0; i<MPC_HORIZON; i++){
-    //     desired_v_B_.segment(i*3,3) <<  0.0,
-    //                                     0.0,
-    //                                     // 0.0;
-    //                                     -amplitude*sin(2*M_PI*freq*(time+i*dt));
-    // }
-        desired_v_B_ << 0.0,
-        0.0,
-        // 0.0;
-        -amplitude*sin(2*M_PI*freq*time);
+   
+    desired_v_B_ << 0.0,
+                    0.0,
+                    -amplitude*sin(2*M_PI*freq*time);
 
     return desired_v_B_;
 }
@@ -157,7 +151,7 @@ int main (int argc, char* argv[]) {
         for(int i = 0; i<4; i++){
             com_p_foot.block(0,i,3,1) = p_foot_list[i].e() - p_base_COM;
         }   
-        B_v_ref = make_base_vel_trajectory(world.getWorldTime(),dt);
+        B_v_ref = make_base_vel_trajectory(world.getWorldTime());
         sphere_traj->setVelocity(raisim::Vec<3>{B_v_ref(0), B_v_ref(1), B_v_ref(2)}, raisim::Vec<3>{0.0, 0.0, 0.0});
         v_ref = B_v_ref;
         // v_ref = wRb*B_v_ref;
@@ -178,6 +172,8 @@ int main (int argc, char* argv[]) {
 
         // std::cout << "x_ref : " << x_ref.segment(0,MPC_STATE_DIM).transpose() << std::endl;
         // std::cout << "x_ref : " << x_ref.segment(MPC_STATE_DIM,MPC_STATE_DIM).transpose() << std::endl;
+        
+        // Set up the convex MPC solver
         mpc_solver.calculate_Ac(base_euler(2));
         mpc_solver.calculate_Bc(base_mass,base_inertia.e(), wRb, com_p_foot);
         mpc_solver.state_discretization(dt);
@@ -185,11 +181,15 @@ int main (int argc, char* argv[]) {
         mpc_solver.calculate_hessian();
         mpc_solver.calculate_gradient(x0,x_ref);
         mpc_solver.calculate_constraints();
+        
+        // MPC QP Conversion
         H = mpc_solver.get_hessian();
         g = mpc_solver.get_gradient();
         C = mpc_solver.get_constraint_matrix();
         lb = mpc_solver.get_lb();
         ub = mpc_solver.get_ub();
+
+        // QP Solver
         solver->init(H, g, C, lb, ub, false);
         solver->solve();
         u = solver->getSolution();
@@ -200,13 +200,7 @@ int main (int argc, char* argv[]) {
         }
         // std::cout << "foot_grf : " << std::endl<<foot_grf << std::endl;
        
-
-        // Convert grf to body frame
-        for(int i=0; i<4; i++){
-            foot_grf_body.block(0,i,3,1) = wRb.transpose()*foot_grf.block(0,i,3,1);
-            // foot_grf_body.block(0,i,3,1) = wR_foot[i].e().transpose()*foot_grf.block(0,i,3,1);
-        }
-        foot_grf_body = foot_grf;   
+        
         robot->getDenseFrameJacobian("FR_foot_fixed", J_c_FR);
         robot->getDenseFrameJacobian("FL_foot_fixed", J_c_FL);
         robot->getDenseFrameJacobian("RR_foot_fixed", J_c_RR);
@@ -224,8 +218,12 @@ int main (int argc, char* argv[]) {
         robot->getFrameOrientation("RR_foot_fixed", wR_foot[2]);
         robot->getFrameOrientation("RL_foot_fixed", wR_foot[3]);
 
+
+        // Convert grf to body frame
+        for(int i=0; i<4; i++){
+            foot_grf_body.block(0,i,3,1) = wRb.transpose()*foot_grf.block(0,i,3,1);
+        }
         foot_grf_body = -foot_grf_body;
-        // std::cout << "foot_grf_body : " << std::endl<<foot_grf_body << std::endl;
 
         tauFR = J_c_FR.block(0,6,3,3).transpose()*foot_grf_body.block(0,0,3,1);
         tauFL = J_c_FL.block(0,9,3,3).transpose()*foot_grf_body.block(0,1,3,1);

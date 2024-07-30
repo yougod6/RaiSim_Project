@@ -5,7 +5,7 @@ class TaskLS_StationaryFeet: public TaskLS
 {
 
     public:
-        TaskLS_StationaryFeet(raisim::World* world, raisim::ArticulatedSystem* robot);
+        TaskLS_StationaryFeet(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim=12, const int var_dim=30);
         ~TaskLS_StationaryFeet();
 
         void update_dJ_c(const double dt=0.001);
@@ -17,6 +17,7 @@ class TaskLS_StationaryFeet: public TaskLS
     private:
         raisim::World* world_;
         raisim::ArticulatedSystem* robot_;
+        double dof_;    
         raisim::Vec<3> gravity_;
         
         Eigen::MatrixXd J_c_FR_;

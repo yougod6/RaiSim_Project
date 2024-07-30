@@ -4,7 +4,7 @@
 class TaskLS_ID: public TaskLS
 {
     public:
-        TaskLS_ID(raisim::World* world, raisim::ArticulatedSystem* robot);
+        TaskLS_ID(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim=6, const int var_dim=30);
         ~TaskLS_ID();
         void updateVector()override;
         void updateMatrix()override;
@@ -12,6 +12,8 @@ class TaskLS_ID: public TaskLS
     private:
         raisim::World* world_;
         raisim::ArticulatedSystem* robot_;
+        int dof_;
+        int contact_dim_;
         raisim::Vec<3> gravity_;
         Eigen::MatrixXd M_;
         Eigen::VectorXd h_;

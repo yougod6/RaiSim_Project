@@ -1,21 +1,22 @@
 #include "TaskLS_StationaryFeet.hpp"
 
-TaskLS_StationaryFeet::TaskLS_StationaryFeet(raisim::World* world, raisim::ArticulatedSystem* robot)
+TaskLS_StationaryFeet::TaskLS_StationaryFeet(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim)
 {
     task_name_ = "Stationary Feet";
-    task_dim_ = 12;
-    var_dim_ = 30; // 18(qddot) + 12(torque)
+    task_dim_ = task_dim;
+    var_dim_ = var_dim; // 18(qddot) + 12(torque)
     world_ = world;
     robot_ = robot;
+    dof_ = robot->getDOF();
     gravity_ = world_->getGravity();
 
-    J_c_FR_ = Eigen::MatrixXd::Zero(3, robot_->getDOF());
-    J_c_FL_ = Eigen::MatrixXd::Zero(3, robot_->getDOF());
-    J_c_RR_ = Eigen::MatrixXd::Zero(3, robot_->getDOF());
-    J_c_RL_ = Eigen::MatrixXd::Zero(3, robot_->getDOF());
-    J_c_ = Eigen::MatrixXd::Zero(12, robot_->getDOF());
-    dJ_c_ = Eigen::MatrixXd::Zero(12, robot_->getDOF());
-    dq_ = Eigen::VectorXd::Zero(robot_->getDOF());
+    J_c_FR_ = Eigen::MatrixXd::Zero(3, dof_);
+    J_c_FL_ = Eigen::MatrixXd::Zero(3, dof_);
+    J_c_RR_ = Eigen::MatrixXd::Zero(3, dof_);
+    J_c_RL_ = Eigen::MatrixXd::Zero(3, dof_);
+    J_c_ = Eigen::MatrixXd::Zero(task_dim_, dof_);
+    dJ_c_ = Eigen::MatrixXd::Zero(task_dim_, dof_);
+    dq_ = Eigen::VectorXd::Zero(dof_);
     
 
     A_ = Eigen::MatrixXd::Zero(task_dim_,var_dim_);
@@ -32,10 +33,10 @@ void TaskLS_StationaryFeet::update_J_c()
     robot_->getDenseFrameJacobian("RR_foot_fixed", J_c_RR_); // 3x18
     robot_->getDenseFrameJacobian("RL_foot_fixed", J_c_RL_); // 3x18
 
-    J_c_.block(0, 0, 3, robot_->getDOF()) = J_c_FR_;
-    J_c_.block(3, 0, 3, robot_->getDOF()) = J_c_FL_;
-    J_c_.block(6, 0, 3, robot_->getDOF()) = J_c_RR_;
-    J_c_.block(9, 0, 3, robot_->getDOF()) = J_c_RL_;
+    J_c_.block(0, 0, 3, dof_) = J_c_FR_;
+    J_c_.block(3, 0, 3, dof_) = J_c_FL_;
+    J_c_.block(6, 0, 3, dof_) = J_c_RR_;
+    J_c_.block(9, 0, 3, dof_) = J_c_RL_;
 }
 
 void TaskLS_StationaryFeet::update_dJ_c(const double dt)
@@ -52,7 +53,7 @@ void TaskLS_StationaryFeet::updateMatrix()
     // update_J_c();
     update_dJ_c(world_->getTimeStep());
    
-    A_.block(0,0,task_dim_,18) = J_c_;
+    A_.block(0,0,task_dim_,dof_) = J_c_;
 
     // std::cout << "Stationary Feet Matrix Updated" << std::endl;
 }

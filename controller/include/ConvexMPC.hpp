@@ -4,7 +4,7 @@
 #include <iostream>
 #include "OsqpEigen/OsqpEigen.h"
 #include "RobotParams.hpp"
-#include "../../utils/Utils.hpp"
+#include "Utils.hpp"
 class ConvexMPC {
     public: 
         ConvexMPC(Eigen::VectorXd& l_weights_, Eigen::VectorXd& k_weights);

@@ -37,3 +37,18 @@ Eigen::Matrix3d Utils::skew(Eigen::Vector3d v)
             -v(1), v(0), 0;
     return skew;
 }
+
+Eigen::MatrixXd Utils::compute_nullspace_QR(const Eigen::MatrixXd& A)
+{
+    if(A.rows() >= A.cols())
+    {
+        return Eigen::MatrixXd::Zero(A.cols(),A.cols());
+    }
+    Eigen::MatrixXd AT = A.transpose(); // R(A) = C(A^T)
+    Eigen::HouseholderQR<Eigen::MatrixXd> qr(AT);
+    Eigen::MatrixXd Q = qr.householderQ();
+    Eigen::MatrixXd R = qr.matrixQR().triangularView<Eigen::Upper>();
+    Eigen::MatrixXd Q2 = Q.block(0, AT.cols(), Q.rows(), Q.cols()-AT.cols());
+    Eigen::MatrixXd N = Q2;
+    return N;
+}

@@ -2,6 +2,7 @@
 #include "raisim/RaisimServer.hpp"
 #include "ConvexMPC.hpp"
 #include "OsqpEigenSolver.hpp"
+#include <random> // for random external force
 
 Eigen::VectorXd make_base_vel_trajectory(const double time){
     const double amplitude = 0.15;
@@ -22,8 +23,8 @@ int main (int argc, char* argv[]) {
     const double hz = 200;
     world.setTimeStep(1/hz); //1kHz
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-    auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\go1\\go1.urdf");
-    // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\aliengo\\aliengo.urdf");
+    // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\go1\\go1.urdf");
+    auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\aliengo\\aliengo.urdf");
     
     raisim::RaisimServer server(&world);
     server.launchServer();
@@ -33,12 +34,18 @@ int main (int argc, char* argv[]) {
    
     Eigen::VectorXd jointNominalConfig(robot->getGeneralizedCoordinateDim());
     
-    jointNominalConfig << 0.0, 0.0, 0.42, //base position
-                        1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
-                        0.0, 0.6, -1.3, //
-                        0.0, 0.6, -1.3,
-                        0.0, 0.6, -1.3,
-                        0.0, 0.6, -1.3;
+    jointNominalConfig << 0.0, 0.0, 0.45, //base position
+                          1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
+                          0.0, 0.6, -1.3, 
+                          0.0, 0.6, -1.3, 
+                          0.0, 0.6, -1.3,
+                          0.0, 0.6, -1.3;
+    // jointNominalConfig << 0.0, 0.0, 0.42, //base position
+    //                     1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
+    //                     0.0, 0.6, -1.3, //
+    //                     0.0, 0.6, -1.3,
+    //                     0.0, 0.6, -1.3,
+    //                     0.0, 0.6, -1.3;
 
     robot->setGeneralizedCoordinate(jointNominalConfig);
 
@@ -85,6 +92,11 @@ int main (int argc, char* argv[]) {
     Eigen::MatrixXd J_c_FL = Eigen::MatrixXd::Zero(3,18);
     Eigen::MatrixXd J_c_RR = Eigen::MatrixXd::Zero(3,18);
     Eigen::MatrixXd J_c_RL = Eigen::MatrixXd::Zero(3,18);
+    
+    Eigen::MatrixXd J_c_FR_r = Eigen::MatrixXd::Zero(3,18);
+    Eigen::MatrixXd J_c_FL_r = Eigen::MatrixXd::Zero(3,18);
+    Eigen::MatrixXd J_c_RR_r = Eigen::MatrixXd::Zero(3,18);
+    Eigen::MatrixXd J_c_RL_r = Eigen::MatrixXd::Zero(3,18);
 
     Eigen::MatrixXd H;
     Eigen::VectorXd g;
@@ -120,6 +132,14 @@ int main (int argc, char* argv[]) {
     sphere_COM->setAppearance("red");
     sphere_COM->setPosition(raisim::Vec<3>{p_base_COM(0), p_base_COM(1), p_base_COM(2)});
     std::cout << "initialization done" << std::endl;
+
+    std::default_random_engine generator;
+    std::uniform_real_distribution<double> distribution(-10.0, 10.0);
+    std::uniform_real_distribution<double> x_distribution(-0.3, 0.3);
+    std::uniform_real_distribution<double> y_distribution(-0.12, 0.12);
+    std::uniform_real_distribution<double> z_distribution(-0.05, 0.05);
+    double rand_x, rand_y, rand_z;
+    double rand_x_posi, rand_y_posi, rand_z_posi;
     for (int i=0; i<totalT; i++) {
 
         auto com_list = robot->getBodyCOM_W();
@@ -162,13 +182,13 @@ int main (int argc, char* argv[]) {
             x_ref.segment(9+i*MPC_STATE_DIM,3) = v_ref; // base velocity
             x_ref(12+i*MPC_STATE_DIM) = -9.81;
         }
-        std::cout.precision(3);
-        for(int i=0; i<MPC_HORIZON; i++){
-            // std::cout << "x_ref z-position : " << x_ref(5+i*MPC_STATE_DIM) << std::endl;
-            // std::cout <<"x_ref z_velocity : " << x_ref(11+i*MPC_STATE_DIM) << std::endl;
-        }
-        std::cout << "x_ref z-position : " << x_ref(5) << std::endl;
-        std::cout << "x0 z-position : " << x0(5) << std::endl;
+        // std::cout.precision(3);
+        // for(int i=0; i<MPC_HORIZON; i++){
+        //     // std::cout << "x_ref z-position : " << x_ref(5+i*MPC_STATE_DIM) << std::endl;
+        //     // std::cout <<"x_ref z_velocity : " << x_ref(11+i*MPC_STATE_DIM) << std::endl;
+        // }
+        // std::cout << "x_ref z-position : " << x_ref(5) << std::endl;
+        // std::cout << "x0 z-position : " << x0(5) << std::endl;
 
         // std::cout << "x_ref : " << x_ref.segment(0,MPC_STATE_DIM).transpose() << std::endl;
         // std::cout << "x_ref : " << x_ref.segment(MPC_STATE_DIM,MPC_STATE_DIM).transpose() << std::endl;
@@ -205,14 +225,12 @@ int main (int argc, char* argv[]) {
         robot->getDenseFrameJacobian("FL_foot_fixed", J_c_FL);
         robot->getDenseFrameJacobian("RR_foot_fixed", J_c_RR);
         robot->getDenseFrameJacobian("RL_foot_fixed", J_c_RL);
-        Eigen::MatrixXd J_c_FR_r = Eigen::MatrixXd::Zero(3,18);
-        Eigen::MatrixXd J_c_FL_r = Eigen::MatrixXd::Zero(3,18);
-        Eigen::MatrixXd J_c_RR_r = Eigen::MatrixXd::Zero(3,18);
-        Eigen::MatrixXd J_c_RL_r = Eigen::MatrixXd::Zero(3,18);
+        
         robot->getDenseFrameRotationalJacobian("FR_foot_fixed", J_c_FR_r);
         robot->getDenseFrameRotationalJacobian("FL_foot_fixed", J_c_FL_r);
         robot->getDenseFrameRotationalJacobian("RR_foot_fixed", J_c_RR_r);
         robot->getDenseFrameRotationalJacobian("RL_foot_fixed", J_c_RL_r);
+        
         robot->getFrameOrientation("FR_foot_fixed", wR_foot[0]);
         robot->getFrameOrientation("FL_foot_fixed", wR_foot[1]);
         robot->getFrameOrientation("RR_foot_fixed", wR_foot[2]);
@@ -230,16 +248,31 @@ int main (int argc, char* argv[]) {
         tauRR = J_c_RR.block(0,12,3,3).transpose()*foot_grf_body.block(0,2,3,1);
         tauRL = J_c_RL.block(0,15,3,3).transpose()*foot_grf_body.block(0,3,3,1);
 
-
         tau.setZero();
         tau.segment(0,3) = tauFR;
         tau.segment(3,3) = tauFL;
         tau.segment(6,3) = tauRR;
         tau.segment(9,3) = tauRL;
-
         generalized_force.tail(12) = tau;
         robot->setGeneralizedForce(generalized_force);
+
+        if(i%100==0){
+            rand_x = distribution(generator);
+            rand_y = distribution(generator);
+            rand_z = distribution(generator);
+            rand_x_posi = x_distribution(generator);
+            rand_y_posi = y_distribution(generator);
+            rand_z_posi = z_distribution(generator);
+        }
+        
+
+        // exert random external force on the robot at every 1 second
+        if(i>500){
+            robot->setExternalForce(0, {rand_x_posi,rand_y_posi,rand_z_posi}, {rand_x, rand_y, rand_z});
+        }
+
         base_euler_prev = base_euler;
+
         server.integrateWorldThreadSafe();
     }
 

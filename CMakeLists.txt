@@ -3,6 +3,7 @@ project(raisim_examples LANGUAGES CXX)
 
 set(raisim_DIR "/Users/yushin/raisim_build/lib/cmake/raisim")
 set(EQUALITY_TASKS_PATH controller/src/tasks/Equality)
+set(INEQUALITY_TASKS_PATH controller/src/tasks/Inequality)
 
 set(jointImpedance_SRCS test/jointImpedance.cpp controller/src/includeTest.cpp)
 set(id_osc_SRCS test/id_osc.cpp)
@@ -14,6 +15,7 @@ set(base_qp_SRCS
     test/base_qp.cpp 
     controller/src/HOQP.cpp
     controller/src/OsqpEigenSolver.cpp
+    controller/src/Tasks/TaskSet.cpp
     controller/src/tasks/TaskLS.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
@@ -23,6 +25,7 @@ set(testHOQP_SRCS
     test/hoqp_test.cpp
     controller/src/OsqpEigenSolver.cpp
     controller/src/HOQP.cpp
+    controller/src/Tasks/TaskSet.cpp
     controller/src/tasks/TaskLS.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
@@ -41,6 +44,7 @@ set(test_wbc_legged_arm_SRCS test/wbc_legged_arm.cpp
     controller/src/OsqpEigenSolver.cpp
     controller/src/HOQP.cpp
     controller/src/HOQP_Slack.cpp
+    controller/src/Tasks/TaskSet.cpp
     controller/src/tasks/TaskLS.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
@@ -48,11 +52,14 @@ set(test_wbc_legged_arm_SRCS test/wbc_legged_arm.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_StationaryEE.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_MinMotion.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_EnergyOpt.cpp
+    ${INEQUALITY_TASKS_PATH}/TaskLS_TorqueLimits.cpp
+    ${INEQUALITY_TASKS_PATH}/TaskLS_FrictionCone.cpp
     utils/Utils.cpp)
 set(test_utils_SRCS test/utils_test.cpp utils/Utils.cpp)
 set(test_HOQP_slack_SRCS test/hoqp_slack_test.cpp
     controller/src/OsqpEigenSolver.cpp
     controller/src/HOQP_Slack.cpp
+    controller/src/Tasks/TaskSet.cpp
     controller/src/tasks/TaskLS.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
@@ -60,6 +67,8 @@ set(test_HOQP_slack_SRCS test/hoqp_slack_test.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_StationaryEE.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_MinMotion.cpp
     ${EQUALITY_TASKS_PATH}/TaskLS_EnergyOpt.cpp
+    ${INEQUALITY_TASKS_PATH}/TaskLS_TorqueLimits.cpp
+    ${INEQUALITY_TASKS_PATH}/TaskLS_FrictionCone.cpp
     utils/Utils.cpp
     )
 include(FetchContent)
@@ -84,6 +93,7 @@ include_directories (${EIGEN3_INCLUDE_DIRS})
 include_directories (controller/include)
 include_directories (controller/include/tasks)
 include_directories (controller/include/tasks/Equality)
+include_directories (controller/include/tasks/Inequality)
 include_directories(utils)
 
 # 실행 파일 추가 및 라이브러리 링크를 위한 함수 정의 

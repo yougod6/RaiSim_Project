@@ -138,7 +138,7 @@ int main (int argc, char* argv[]) {
     Kp_base.block(3,3,3,3) = Kp_base_orientation*Eigen::MatrixXd::Identity(3,3);
     Kd_base.block(0,0,3,3) = Kd_base_position*Eigen::MatrixXd::Identity(3,3);
     Kd_base.block(3,3,3,3) = Kd_base_orientation*Eigen::MatrixXd::Identity(3,3);
-    const int totalT = 100000; //100s
+    const int totalT = 1000000; 
 
     Eigen::VectorXd tau = Eigen::VectorXd::Zero(12);
     Eigen::VectorXd tau_pd = Eigen::VectorXd::Zero(12);
@@ -211,7 +211,7 @@ int main (int argc, char* argv[]) {
         // desired_qddot_base = moor_penrose_pseudo_inverse(J_B)*(desired_xddot_base - J_B_dot*qdot);
         raisim::Vec<3> FR_foot;
         go1->getFramePosition("FR_foot_fixed", FR_foot);
-        std::cout << "FR_foot: " << FR_foot.e().transpose() << std::endl;
+        // std::cout << "FR_foot: " << FR_foot.e().transpose() << std::endl;
         Eigen::VectorXd des_qddot = Eigen::VectorXd::Zero(18);
         Eigen::VectorXd tau_total = Eigen::VectorXd::Zero(18);
         
@@ -234,7 +234,11 @@ int main (int argc, char* argv[]) {
         base_rx[i] = base_pose(3);
         base_ry[i] = base_pose(4);
         base_rz[i] = base_pose(5);
-
+        Eigen::VectorXd acc = go1->getGeneralizedAcceleration().e();
+        Eigen::VectorXd toq = go1->getGeneralizedForce().e();
+        std::cout << "acc size" << acc.size() << std::endl;
+        std::cout << "toq size" << toq.size() << std::endl;
+        std::cout << "toq : \n" << toq << std::endl;
         tau.setZero();
         tau = tau_total;
        

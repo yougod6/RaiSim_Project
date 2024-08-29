@@ -7,7 +7,7 @@ class TaskLS
 {
 
     public:
-        TaskLS();
+        TaskLS(int task_dim, int var_dim);
         virtual ~TaskLS();
 
         virtual void updateMatrix();

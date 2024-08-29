@@ -3,16 +3,11 @@
 
 
 TaskLS_MoveBase::TaskLS_MoveBase(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, const double kp, const double kd)
+: TaskLS(task_dim, var_dim), world_(world), robot_(robot), kp_(kp), kd_(kd)
 {
     task_name_ = "Move Base";
-    task_dim_ = task_dim;
-    var_dim_ = var_dim; // 18(qddot) + 12(torque)
-    world_ = world;
-    robot_ = robot;
     dof_ = robot->getDOF();
     gravity_ = world_->getGravity();
-    kp_ = kp;
-    kd_ = kd;
 
     J_B_position = Eigen::MatrixXd::Zero(3, dof_);
     J_B_rotation = Eigen::MatrixXd::Zero(3, dof_);
@@ -78,14 +73,16 @@ void TaskLS_MoveBase::makeBaseTrajectory(double time){
     const double amplitude = 0.05; //0.15
     const double freq = 0.2;
 
-   desired_x_ << -0.00250028 ,
-                    0.000455424+ amplitude*sin(2*M_PI*freq*time) ,
-                    0.34,
-                    0,0,0;
-    // desired_x_ << -0.0490382 ,
-    //                0.00157048 + amplitude*sin(2*M_PI*freq*time) ,
-    //                 0.401518,
-    //                 0,0,0;
+//    desired_x_ << -0.00250028 ,
+//                     0.000455424+ amplitude*sin(2*M_PI*freq*time) ,
+//                     0.34,
+//                     0,0,0;
+    desired_x_ <<   -0.0490382 ,
+                    0.00157048,
+                    0.401518 + amplitude*sin(2*M_PI*freq*time) ,
+                    0,
+                    0,
+                    0;
 }
 
 void TaskLS_MoveBase::updateDesiredBaseAcceleration(){

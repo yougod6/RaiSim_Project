@@ -1,5 +1,13 @@
 #include "Utils.hpp"
 #include <iostream>
+
+
+// Function to print a matrix
+void printMatrix(const Eigen::MatrixXd& mat, const std::string& name) {
+    std::cout << name << ":\n" << mat << "\n\n";
+}
+
+
 int main (int argc, char* argv[]) {
     Eigen::Quaterniond q(0.5, 0.5, 0.5, 0.5);
     Eigen::Vector3d euler = Utils::quat_to_euler(q);
@@ -47,5 +55,50 @@ int main (int argc, char* argv[]) {
     Eigen::MatrixXd Z4 = Z3*Utils::compute_nullspace_QR(A4*Z3);
     std::cout << "Z4 is " << Z4.rows() << "x" << Z4.cols() << std::endl;
     std::cout << "N(A4*Z3) : \n" << Utils::compute_nullspace_QR(A4*Z3) << std::endl;
+
+    // Define the matrices and vector of matrices
+    Eigen::MatrixXd Z_(3, 3);
+    Z_ << 1, 2, 3,
+          4, 5, 6,
+          7, 8, 9;
+
+    Eigen::MatrixXd Z_1(2, 3);
+    Z_1 << 1, 2, 3,
+         4, 5, 6;
+
+    Eigen::MatrixXd Z_2(3, 3);
+    Z_2 << 7, 8, 9,
+         10, 11, 12,
+         13, 14, 15;
+
+    Eigen::MatrixXd Z_3(1, 3);
+    Z_3 << 16, 17, 18;
+
+    std::vector<Eigen::MatrixXd> D_ineq_vec_ = {Z_1, Z_2, Z_3};
+
+    // Calculate the total number of rows for D_tilde
+    int total_rows = 0;
+    for (const auto& mat : D_ineq_vec_) {
+        total_rows += mat.rows();
+    }
+
+    // Initialize D_tilde with the appropriate size
+    Eigen::MatrixXd D_tilde(total_rows, Z_.cols());
+
+    // Fill D_tilde using reverse iterator
+    int row = 0;
+    for (auto it = D_ineq_vec_.rbegin(); it != D_ineq_vec_.rend(); ++it) {
+        D_tilde.block(row, 0, it->rows(), Z_.cols()) = (*it) * Z_;
+        // Debugging purpose
+        std::cout << "Matrix:\n" << *it << "\n";
+        std::cout << "Z_:\n" << Z_ << "\n";
+        std::cout << "(*it) * Z_:\n" << (*it) * Z_ << "\n\n";
+        
+        row += it->rows();
+    }
+
+    // Print the final D_tilde matrix
+    printMatrix(D_tilde, "D_tilde");
+
     return 0;
 }

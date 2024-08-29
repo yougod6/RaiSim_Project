@@ -1,6 +1,7 @@
 #include "TaskLS.hpp"
 
-TaskLS::TaskLS()
+TaskLS::TaskLS(int task_dim, int var_dim)
+: task_dim_(task_dim), var_dim_(var_dim)
 {
 }
 

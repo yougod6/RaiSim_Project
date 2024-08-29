@@ -32,6 +32,7 @@ void OsqpEigenSolver::init( Eigen::MatrixXd& P,  Eigen::VectorXd& q,  Eigen::Mat
     solver_.data()->clearHessianMatrix();
     solver_.data()->clearLinearConstraintsMatrix();
     
+    
     solver_.data()->setNumberOfVariables(P_.cols());
     solver_.data()->setNumberOfConstraints(A_.rows());
     solver_.data()->setHessianMatrix(P_);

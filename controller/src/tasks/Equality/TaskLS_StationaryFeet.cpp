@@ -1,12 +1,9 @@
 #include "TaskLS_StationaryFeet.hpp"
 
 TaskLS_StationaryFeet::TaskLS_StationaryFeet(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim)
+: TaskLS(task_dim, var_dim), world_(world), robot_(robot)
 {
     task_name_ = "Stationary Feet";
-    task_dim_ = task_dim;
-    var_dim_ = var_dim; // 18(qddot) + 12(torque)
-    world_ = world;
-    robot_ = robot;
     dof_ = robot->getDOF();
     gravity_ = world_->getGravity();
 

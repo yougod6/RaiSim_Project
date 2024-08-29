@@ -1,4 +1,5 @@
 #include "Utils.hpp"
+#include <iostream>
 
 Eigen::Vector3d Utils::quat_to_euler(Eigen::Quaterniond q)
 {
@@ -41,7 +42,8 @@ Eigen::Matrix3d Utils::skew(Eigen::Vector3d v)
 Eigen::MatrixXd Utils::compute_nullspace_QR(const Eigen::MatrixXd& A)
 {
     if(A.rows() >= A.cols())
-    {
+    {   
+        std::cout << "Error: A.rows() >= A.cols()" << std::endl;    
         return Eigen::MatrixXd::Zero(A.cols(),A.cols());
     }
     Eigen::MatrixXd AT = A.transpose(); // R(A) = C(A^T)

@@ -1,13 +1,10 @@
 #include "TaskLS_ID.hpp"
 
 TaskLS_ID::TaskLS_ID(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim)
+: TaskLS(task_dim, var_dim), world_(world), robot_(robot)
 {
     task_name_ = "Inverse Dynamics";
-    task_dim_ = task_dim; // 18 - 12 
-    var_dim_ = var_dim; // 18(qddot) + 12(torque)
     contact_dim_ = 12;
-    world_ = world;
-    robot_ = robot;
     gravity_ = world_->getGravity();
     dof_ = robot_->getDOF();
 

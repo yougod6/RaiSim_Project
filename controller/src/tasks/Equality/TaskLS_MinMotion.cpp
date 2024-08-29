@@ -1,17 +1,12 @@
 #include "TaskLS_MinMotion.hpp"
 
 TaskLS_MinMotion::TaskLS_MinMotion(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, const double kp, const double kd)
+: TaskLS(task_dim, var_dim), world_(world), robot_(robot), kp_(kp), kd_(kd)
 {
     task_name_ = "Minimum Motion";
-    task_dim_ = task_dim; // number of actuated joints 
-    var_dim_ = var_dim;
-    world_ = world;
-    robot_ = robot;
     dof_ = robot_->getDOF();
     actuated_dim_ = dof_ - 6;
     gravity_ = world_->getGravity();
-    kp_ = kp;
-    kd_ = kd;
     nominal_actuated_q_ = Eigen::VectorXd::Zero(actuated_dim_);
     nominal_actuated_dq_ = Eigen::VectorXd::Zero(actuated_dim_);
     actuated_q_ = Eigen::VectorXd::Zero(actuated_dim_);

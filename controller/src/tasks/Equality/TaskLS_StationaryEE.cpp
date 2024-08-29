@@ -1,16 +1,11 @@
 #include "TaskLS_StationaryEE.hpp"
 
 TaskLS_StationaryEE::TaskLS_StationaryEE(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, const double kp, const double kd)
+: TaskLS(task_dim, var_dim), world_(world), robot_(robot), kp_(kp), kd_(kd)
 {
     task_name_ = "Stationary End-Effector";
-    task_dim_ = task_dim;
-    var_dim_ = var_dim;
-    world_ = world;
-    robot_ = robot;
     dof_ = robot_->getDOF();
     gravity_ = world_->getGravity();
-    kp_ = kp;
-    kd_ = kd;
     J_EE_position = Eigen::MatrixXd::Zero(3, dof_);
     J_EE_rotation = Eigen::MatrixXd::Zero(3, dof_);
     J_EE_ = Eigen::MatrixXd::Zero(task_dim_, dof_);

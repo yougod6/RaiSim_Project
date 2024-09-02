@@ -6,16 +6,15 @@ class TaskLS_StationaryEE: public TaskLS
 {
 
     public:
-        TaskLS_StationaryEE(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim=6, const int var_dim=30, const double kp=100, const double kd=(2*sqrt(100)));
+        TaskLS_StationaryEE(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, Eigen::VectorXd desired_x ,const double kp=100, const double kd=(2*sqrt(100)));
         ~TaskLS_StationaryEE();
 
         void update_dJ_EE(const double dt=0.001);
         void update_J_EE();
         void updateVector()override;
         void updateMatrix()override;
-        //retrun desired_q_b, desired_dq_b 
-        void makeEETrajectory(double time);
-        //return desired_ddq_b by pd control
+        // void makeEETrajectory(double time);
+        void updateDesiredEEPose(Eigen::VectorXd desired_x);
         void updateDesiredBaseAcceleration();
     
     private:

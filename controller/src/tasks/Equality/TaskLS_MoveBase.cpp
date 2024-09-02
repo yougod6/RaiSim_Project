@@ -2,8 +2,8 @@
 #define _USE_MATH_DEFINES 
 
 
-TaskLS_MoveBase::TaskLS_MoveBase(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, const double kp, const double kd)
-: TaskLS(task_dim, var_dim), world_(world), robot_(robot), kp_(kp), kd_(kd)
+TaskLS_MoveBase::TaskLS_MoveBase(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, Eigen::VectorXd desired_x, const double kp, const double kd)
+: TaskLS(task_dim, var_dim), world_(world), robot_(robot), desired_x_(desired_x) ,  kp_(kp), kd_(kd)
 {
     task_name_ = "Move Base";
     dof_ = robot->getDOF();
@@ -18,7 +18,6 @@ TaskLS_MoveBase::TaskLS_MoveBase(raisim::World* world, raisim::ArticulatedSystem
 
     dq_ = Eigen::VectorXd::Zero(dof_);
    
-    desired_x_ = Eigen::VectorXd::Zero(task_dim_);
     desired_xdot_ = Eigen::VectorXd::Zero(task_dim_);
     desired_xddot_ = Eigen::VectorXd::Zero(task_dim_);
 
@@ -61,29 +60,32 @@ void TaskLS_MoveBase::updateVector()
     // std::cout << "Move Base Vector PreUpdated" << std::endl;
    
     double time = world_->getWorldTime();
-    makeBaseTrajectory(world_->getWorldTime());
+    // makeBaseTrajectory(world_->getWorldTime());
     // std::cout << "Base Trajectory Made" << std::endl;
     updateDesiredBaseAcceleration();
     b_ = desired_xddot_ - dJ_B_*robot_->getGeneralizedVelocity().e();
     // std::cout << "Move Base Vector Updated" << std::endl;
 }
 
-void TaskLS_MoveBase::makeBaseTrajectory(double time){
-    // Defines circular trajectory parameters in xz plane
-    const double amplitude = 0.05; //0.15
-    const double freq = 0.2;
-
-//    desired_x_ << -0.00250028 ,
-//                     0.000455424+ amplitude*sin(2*M_PI*freq*time) ,
-//                     0.34,
-//                     0,0,0;
-    desired_x_ <<   -0.0490382 ,
-                    0.00157048,
-                    0.401518 + amplitude*sin(2*M_PI*freq*time) ,
-                    0,
-                    0,
-                    0;
+void TaskLS_MoveBase::updateDesiredBasePose(Eigen::VectorXd desired_x){
+    desired_x_ = desired_x;
 }
+// void TaskLS_MoveBase::makeBaseTrajectory(double time){
+//     // Defines circular trajectory parameters in xz plane
+//     const double amplitude = 0.05; //0.15
+//     const double freq = 0.2;
+
+// //    desired_x_ << -0.00250028 ,
+// //                     0.000455424+ amplitude*sin(2*M_PI*freq*time) ,
+// //                     0.34,
+// //                     0,0,0;
+//     desired_x_ <<   -0.0490382 ,
+//                     0.00157048,
+//                     0.401518,// + amplitude*sin(2*M_PI*freq*time) ,
+//                     0,
+//                     0,
+//                     0;
+// }
 
 void TaskLS_MoveBase::updateDesiredBaseAcceleration(){
     Eigen::VectorXd q_B = Eigen::VectorXd::Zero(6);

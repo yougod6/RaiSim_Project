@@ -29,6 +29,7 @@ void HOQP_Slack::init()
         return;
     }
     updateAllTasks();
+    std::cout << "HOQP_Slack initialized" << std::endl;
     var_dim_ = stacked_tasks_[0]->getVarDim();
     xopt_ = Eigen::VectorXd::Zero(var_dim_);
     Z_ = Eigen::MatrixXd::Identity(var_dim_, var_dim_);
@@ -38,6 +39,9 @@ void HOQP_Slack::solve()
 {
     A_eq_ = current_task_->getEqualityMatrix();
     b_eq_ = current_task_->getEqualityVector();
+    // std::cout << current_task_->getEqualityTaskNames()[0] << std::endl;
+    // std::cout << "A_eq_ : " << A_eq_.rows() << " x " << A_eq_.cols() << std::endl;
+    // std::cout << "b_eq_ : " << b_eq_.rows() << std::endl;
     if(inequality_contraints_dim_ == task_num_){
         H_ = Z_.transpose()*A_eq_.transpose()*A_eq_*Z_;
         g_ = Z_.transpose()*A_eq_.transpose()*(A_eq_*xopt_-b_eq_);
@@ -120,11 +124,14 @@ void HOQP_Slack::solveAllTasks()
     stacked_constraints_dim_ = 0;
     for (TaskSet* task : stacked_tasks_) {
         current_task_ = task;
-        solve();
-        xopt_ = xopt_ + Z_*zopt_;
-        if(current_task_!=stacked_tasks_[task_num_-1])
-            Z_ = Z_*Utils::compute_nullspace_QR(A_eq_*Z_);
-        auto name = current_task_->getEqualityTaskNames();
+        if(current_task_->getEqualityTaskDim() != 0){
+            solve();
+            xopt_ = xopt_ + Z_*zopt_;
+            if(current_task_!=stacked_tasks_[task_num_-1])
+                Z_ = Z_*Utils::compute_nullspace_QR(A_eq_*Z_);
+        }
+        
+        // auto name = current_task_->getEqualityTaskNames();
         // std::cout << "##############  "<<name[0] <<" is solved!  ##############" << std::endl;
     }
     // std::cout << " ------------------------ All tasks solved ------------------------ " << std::endl;

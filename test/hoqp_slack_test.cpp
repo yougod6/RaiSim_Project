@@ -31,9 +31,18 @@ int main (int argc, char* argv[]) {
     robot->setGeneralizedCoordinate(jointNominalConfig);
     robot->setGeneralizedForce(Eigen::VectorXd::Zero(robot->getDOF()));
     robot->setName("aliengo");
+
+    Eigen::VectorXd base_desired_x = Eigen::VectorXd::Zero(6);
+    base_desired_x <<   -0.0490382 ,
+                    0.00157048,
+                    0.401518,// + amplitude*sin(2*M_PI*freq*time) ,
+                    0,
+                    0,
+                    0;
+
     std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(&world, robot);
     std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(&world, robot);
-    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_MoveBase>(&world, robot);
+    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_MoveBase>(&world, robot,6,30,base_desired_x);
     std::unique_ptr<TaskLS> task4 = std::make_unique<TaskLS_EnergyOpt>(&world, robot);
     
     Eigen::VectorXd tau_min = -40*Eigen::VectorXd::Ones(12);
@@ -67,8 +76,16 @@ int main (int argc, char* argv[]) {
     server.launchServer();
     server.focusOn(robot);
     const int totalT = 1000000;
+
     Eigen::VectorXd generalizedForce = Eigen::VectorXd::Zero(robot->getDOF());
-    
+    std::default_random_engine generator;
+    std::uniform_real_distribution<double> distribution(-10.0, 10.0);
+    std::uniform_real_distribution<double> x_distribution(-0.3, 0.3);
+    std::uniform_real_distribution<double> y_distribution(-0.12, 0.12);
+    std::uniform_real_distribution<double> z_distribution(-0.05, 0.05);
+    double rand_x, rand_y, rand_z;
+    double rand_x_posi, rand_y_posi, rand_z_posi;
+
     for (int i=0; i<totalT; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6);
         hoqp->solveAllTasks();
@@ -77,6 +94,20 @@ int main (int argc, char* argv[]) {
         tau = solution_vector.tail(12);
         generalizedForce.tail(12) = tau;
         robot->setGeneralizedForce(generalizedForce);
+
+        if(i%500==0){
+            rand_x = distribution(generator);
+            rand_y = distribution(generator);
+            rand_z = distribution(generator);
+            rand_x_posi = x_distribution(generator);
+            rand_y_posi = y_distribution(generator);
+            rand_z_posi = z_distribution(generator);
+        }
+
+        if(i>500){
+            robot->setExternalForce(0, {rand_x_posi,rand_y_posi,rand_z_posi}, {rand_x, rand_y, rand_z});
+        }
+
 
         server.integrateWorldThreadSafe();
     }    

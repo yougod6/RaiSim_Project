@@ -1,7 +1,7 @@
 #include "TaskLS_StationaryEE.hpp"
 
-TaskLS_StationaryEE::TaskLS_StationaryEE(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, const double kp, const double kd)
-: TaskLS(task_dim, var_dim), world_(world), robot_(robot), kp_(kp), kd_(kd)
+TaskLS_StationaryEE::TaskLS_StationaryEE(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, Eigen::VectorXd desired_x, const double kp, const double kd)
+: TaskLS(task_dim, var_dim), world_(world), robot_(robot), desired_x_(desired_x), kp_(kp), kd_(kd)
 {
     task_name_ = "Stationary End-Effector";
     dof_ = robot_->getDOF();
@@ -12,7 +12,6 @@ TaskLS_StationaryEE::TaskLS_StationaryEE(raisim::World* world, raisim::Articulat
     dJ_EE_ = Eigen::MatrixXd::Zero(task_dim_, dof_);
     dq_ = Eigen::VectorXd::Zero(dof_);
 
-    desired_x_ = Eigen::VectorXd::Zero(task_dim_);
     desired_xdot_ = Eigen::VectorXd::Zero(task_dim_);
     desired_xddot_ = Eigen::VectorXd::Zero(task_dim_);
 
@@ -49,16 +48,21 @@ void TaskLS_StationaryEE::updateMatrix()
 
 void TaskLS_StationaryEE::updateVector()
 {
-    makeEETrajectory(world_->getWorldTime());
+    // makeEETrajectory(world_->getWorldTime());
     updateDesiredBaseAcceleration();
     b_ = desired_xddot_ - dJ_EE_*robot_->getGeneralizedVelocity().e();
 }
 
-void TaskLS_StationaryEE::makeEETrajectory(double time)
-{
-    desired_x_ << 0.15, 0.0, 0.8,
-                0.0, 0.122025, 0.0;
+// void TaskLS_StationaryEE::makeEETrajectory(double time)
+// {
+//     desired_x_ << 0.15, 0.0, 0.8,
+//                 0.0, 0.122025, 0.0;
+// }
+
+void TaskLS_StationaryEE::updateDesiredEEPose(Eigen::VectorXd desired_x){
+    desired_x_ = desired_x;
 }
+
 
 void TaskLS_StationaryEE::updateDesiredBaseAcceleration()
 {
@@ -79,7 +83,10 @@ void TaskLS_StationaryEE::updateDesiredBaseAcceleration()
     robot_->getFrameAngularVelocity("joint6",ee_angular_velocity);
     xdot.head(3) = ee_velocity.e();
     xdot.tail(3) = ee_angular_velocity.e();
-
+    Eigen::VectorXd kp_vec = kp_*Eigen::VectorXd::Ones(6);
+    Eigen::VectorXd kd_vec = kd_*Eigen::VectorXd::Ones(6);
+    kp_vec.tail(3) = 100*Eigen::Vector3d::Ones();
+    kd_vec.tail(3) = 2*sqrt(100)*Eigen::Vector3d::Ones();
     desired_xddot_ = kp_*(desired_x_ - x) - kd_*xdot;
 }
 

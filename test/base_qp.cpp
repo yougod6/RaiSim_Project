@@ -99,7 +99,12 @@ int main (int argc, char* argv[]) {
 
     Eigen::VectorXd base_pose = Eigen::VectorXd::Zero(6);
     Eigen::VectorXd desired_base_pose = Eigen::VectorXd::Zero(6);
-
+    desired_base_pose <<   -0.0490382 ,
+                        0.00157048,
+                        0.401518,// + amplitude*sin(2*M_PI*freq*time) ,
+                        0,
+                        0,
+                        0;
     Eigen::VectorXd desired_qddot = Eigen::VectorXd::Zero(18);
     const int Kp_base_position = 100;
     const int Kp_base_orientation = 100;
@@ -116,7 +121,7 @@ int main (int argc, char* argv[]) {
     Eigen::VectorXd tau = Eigen::VectorXd::Zero(12);
 
     TaskLS *task1 = new TaskLS_StationaryFeet(&world, go1);
-    TaskLS *task2 = new TaskLS_MoveBase(&world, go1);
+    TaskLS *task2 = new TaskLS_MoveBase(&world, go1,6,30,desired_base_pose);
 
     HOQP* hoqp = new HOQP();
     hoqp->addTask(task1);

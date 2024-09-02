@@ -6,16 +6,15 @@ class TaskLS_MoveBase: public TaskLS
 {
 
     public:
-        TaskLS_MoveBase(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim=6, const int var_dim=30, const double kp=100, const double kd=(2*sqrt(100)));
+        TaskLS_MoveBase(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, Eigen::VectorXd desired_x ,  const double kp=100, const double kd=(2*sqrt(100)));
         ~TaskLS_MoveBase();
 
         void update_dJ_B(const double dt=0.001);
         void update_J_B();
         void updateVector()override;
         void updateMatrix()override;
-        //retrun desired_q_b, desired_dq_b 
-        void makeBaseTrajectory(double time);
-        //return desired_ddq_b by pd control
+        void updateDesiredBasePose(Eigen::VectorXd desired_x);
+        // void makeBaseTrajectory(double time);
         void updateDesiredBaseAcceleration();
     
     private:

@@ -19,7 +19,7 @@ void TaskSet::addEqualityTask(TaskLS* task)
     }
     equality_task_.push_back(task);
     equality_task_dim_ += task->getTaskDim();
-
+    
     A_eqs_ = Eigen::MatrixXd::Zero(equality_task_dim_, var_dim_);
     b_eqs_ = Eigen::VectorXd::Zero(equality_task_dim_);
 }

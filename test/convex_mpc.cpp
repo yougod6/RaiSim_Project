@@ -256,7 +256,7 @@ int main (int argc, char* argv[]) {
         generalized_force.tail(12) = tau;
         robot->setGeneralizedForce(generalized_force);
 
-        if(i%100==0){
+        if(i%500==0){
             rand_x = distribution(generator);
             rand_y = distribution(generator);
             rand_z = distribution(generator);

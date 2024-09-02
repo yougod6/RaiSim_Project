@@ -34,11 +34,20 @@ int main (int argc, char* argv[]) {
     go1->setName("go1");
 
     go1->printOutFrameNamesInOrder();
+
+    Eigen::VectorXd base_desired_x = Eigen::VectorXd::Zero(6);
+    base_desired_x <<   -0.0490382 ,
+                    0.00157048,
+                    0.401518,// + amplitude*sin(2*M_PI*freq*time) ,
+                    0,
+                    0,
+                    0;
+
     // std::cout << "generalizedCoordinate : " <<go1->getGeneralizedCoordinate().e().size() <<std::endl;
     // std::cout << "generalizedVelocity : " <<go1->getGeneralizedVelocity().e().size() <<std::endl;
     std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(&world, go1);
     std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(&world, go1);
-    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_MoveBase>(&world, go1);
+    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_MoveBase>(&world, go1,6,30,base_desired_x);
     std::unique_ptr<TaskLS> task4 = std::make_unique<TaskLS_EnergyOpt>(&world, go1);
     std::unique_ptr<HOQP> hoqp = std::make_unique<HOQP>();
     hoqp->addTask(task1.get());

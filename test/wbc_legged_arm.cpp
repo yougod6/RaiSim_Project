@@ -51,11 +51,11 @@ void get_contact_feet(raisim::ArticulatedSystem* robot, std::vector<bool>& conta
 int main (int argc, char* argv[]) {
     raisim::World world;
     auto ground = world.addGround(0., "default", raisim::COLLISION(-1));
-    bool is_attached = true;
+    bool is_attached = false;
     bool is_inclined = true;
     
     raisim::Vec<3> gravity = world.getGravity();
-    const double hz = 200;
+    const double hz = 100;
     world.setTimeStep(1/hz);
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
     auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf", "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
@@ -85,22 +85,22 @@ int main (int argc, char* argv[]) {
     
     if(is_inclined){
         raisim::TerrainProperties terrainProperties;
-        terrainProperties.frequency = 0.7;
+        terrainProperties.frequency = 0.9;
         terrainProperties.zScale = 1.0;
         terrainProperties.xSize = 20.0;
         terrainProperties.ySize = 20.0;
         terrainProperties.xSamples = 100;
         terrainProperties.ySamples = 100;
-        terrainProperties.fractalOctaves = 2;
+        terrainProperties.fractalOctaves = 1;
         terrainProperties.fractalLacunarity = 5.0;
         terrainProperties.fractalGain = 0.25;
         
         offset = 0.45;
 
         auto hm = world.addHeightMap(0.0, 0.0, terrainProperties);
-
+        hm->setAppearance("0.72, 0.49, 0.3, 1.0"); //"26/255, 72/255, 33/255, 1.0"
         jointNominalConfig << 0.0, 0.0, 0.43+offset, //base position
-                          1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
+                          0.9914449 ,0, -0.130526, 0,//1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
                           0.0, 0.6, -1.3, 
                           0.0, 0.6, -1.3, 
                           0.0, 0.6, -1.3,
@@ -120,7 +120,7 @@ int main (int argc, char* argv[]) {
             
     std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(&world, robot, 12, 42);
     std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(&world, robot, 12, 42);
-    std::unique_ptr<TaskLS_StationaryEE> task3 = std::make_unique<TaskLS_StationaryEE>(&world, robot, 6, 42, desired_x,150,2*sqrt(150));
+    std::unique_ptr<TaskLS_StationaryEE> task3 = std::make_unique<TaskLS_StationaryEE>(&world, robot, 6, 42, desired_x,300,2*sqrt(150));
     std::unique_ptr<TaskLS_MoveBase> task4 = std::make_unique<TaskLS_MoveBase>(&world, robot, 6, 42, base_desired_x);
     std::unique_ptr<TaskLS> task5 = std::make_unique<TaskLS_EnergyOpt>(&world, robot, 42);
     
@@ -129,7 +129,7 @@ int main (int argc, char* argv[]) {
     tau_min.tail(6) = -33*Eigen::VectorXd::Ones(6);
     tau_max.tail(6) = 33*Eigen::VectorXd::Ones(6);
     std::unique_ptr<TaskLS> constraints1 = std::make_unique<TaskLS_TorqueLimits>(tau_min, tau_max);
-    std::unique_ptr<TaskLS> constraints2 = std::make_unique<TaskLS_FrictionCone>(&world, robot, 24,42,0.8);
+    std::unique_ptr<TaskLS> constraints2 = std::make_unique<TaskLS_FrictionCone>(&world, robot, 24,42,0.2);
 
     std::unique_ptr<TaskSet> task_set1 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set2 = std::make_unique<TaskSet>(42);

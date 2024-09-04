@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(raisim_examples LANGUAGES CXX)
-
+set(CMAKE_OSX_ARCHITECTURES "arm64")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a")
 set(raisim_DIR "/Users/yushin/raisim_build/lib/cmake/raisim")
 set(EQUALITY_TASKS_PATH controller/src/tasks/Equality)
 set(INEQUALITY_TASKS_PATH controller/src/tasks/Inequality)
@@ -71,6 +72,20 @@ set(test_HOQP_slack_SRCS test/hoqp_slack_test.cpp
     ${INEQUALITY_TASKS_PATH}/TaskLS_FrictionCone.cpp
     utils/Utils.cpp
     )
+set(test_slope_SRCS test/slope_test.cpp
+    controller/src/OsqpEigenSolver.cpp
+    controller/src/HOQP_Slack.cpp
+    controller/src/Tasks/TaskSet.cpp
+    controller/src/tasks/TaskLS.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MoveBase.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryEE.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MinMotion.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_EnergyOpt.cpp
+    ${INEQUALITY_TASKS_PATH}/TaskLS_TorqueLimits.cpp
+    ${INEQUALITY_TASKS_PATH}/TaskLS_FrictionCone.cpp
+    utils/Utils.cpp)
 include(FetchContent)
 
 FetchContent_Declare(matplotplusplus
@@ -131,4 +146,5 @@ add_custom_executable(test_wbc_legged_arm "${test_wbc_legged_arm_SRCS}" "osqp::o
 add_custom_executable(testHOQP "${testHOQP_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
 add_custom_executable(test_utils "${test_utils_SRCS}" "")
 add_custom_executable(test_HOQP_slack "${test_HOQP_slack_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
+add_custom_executable(test_slope "${test_slope_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/rsc DESTINATION ${CMAKE_BINARY_DIR})

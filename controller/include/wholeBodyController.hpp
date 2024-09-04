@@ -1,7 +1,0 @@
-class wholeBodyController
-{
-    public:
-
-    private:
-
-};

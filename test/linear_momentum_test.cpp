@@ -49,6 +49,20 @@ void get_contact_feet(raisim::ArticulatedSystem* robot, std::vector<bool>& conta
     }
 }
 
+std::string make_filename(std::string prefix, bool is_attached,bool is_inclined, double hz, std::string date_time){
+    std::stringstream ss1;
+    ss1 << std::fixed << std::setprecision(0);
+    ss1 << prefix;
+    if(is_attached)
+        ss1 << "attached_";
+    if(is_inclined)
+        ss1 << "inclined_";
+    ss1 << hz << "hz_";
+    ss1 << date_time << ".csv";
+    return ss1.str();   
+}
+
+
 int main (int argc, char* argv[]) {
     bool is_attached = true;
     bool is_inclined = true;
@@ -142,6 +156,8 @@ int main (int argc, char* argv[]) {
                     0,
                     0;
         base_desired_x.tail(3) = euler;
+        std::cout << "euler : " << euler.transpose() << std::endl;
+        std::cout << offset+0.43 << std::endl;
     }
 
     Eigen::Vector3d rate_weight = 50*Eigen::Vector3d::Ones(3);
@@ -204,9 +220,15 @@ int main (int argc, char* argv[]) {
     robot->setGeneralizedForce(Eigen::VectorXd::Zero(robot->getDOF())); 
     robot->setName("aliengo + Z1");
     // robot->printOutBodyNamesInOrder();
+    robot->getCollisionBody("FL_foot").setMaterial("steel");    
+    robot->getCollisionBody("FR_foot").setMaterial("steel");
+    robot->getCollisionBody("RL_foot").setMaterial("steel");
+    robot->getCollisionBody("RR_foot").setMaterial("steel");
     world.setMaterialPairProp("steel", "brass", 0.2, 0., 0., 0.95, 0.01);
     auto proper = world.getMaterialPairProperties("brass", "steel");
     std::cout << "friction btw steels : " << proper.c_static_f << std::endl;
+
+    auto pin2 = world.addBox(0.15, 0.5, 0.15, 0.5,"steel",raisim::COLLISION(2),raisim::COLLISION(2));
     if(is_attached){
         // auto pin = world.addSphere(0.05, 0.01,"steel",raisim::COLLISION(1),raisim::COLLISION(1));
         // pin->setBodyType(raisim::BodyType::DYNAMIC);
@@ -215,49 +237,48 @@ int main (int argc, char* argv[]) {
         raisim::Vec<3> ee_posi_tmp;
         robot->getFramePosition("joint6", ee_posi_tmp);
         ee_posi_tmp = ee_posi_tmp + raisim::Vec<3>{0,0,-wire_length};
-        auto pin2 = world.addBox(0.15, 0.5, 0.15, 0.5,"steel",raisim::COLLISION(2),raisim::COLLISION(2));
         pin2->setBodyType(raisim::BodyType::DYNAMIC);
         pin2->setPosition(ee_posi_tmp);
         // auto wire = world.addCompliantWire(pin, 0, {0,0,0}, robot, 0, {0., 0, 0}, 2.0, 1000);
         auto wire = world.addStiffWire(pin2,0,{0,0,0},robot,18,{0.05,0,0},wire_length);
         wire->setStretchType(raisim::LengthConstraint::StretchType::BOTH);
     }
+    robot->printOutFrameNamesInOrder();
+    Eigen::VectorXd obj_position = Eigen::VectorXd::Zero(3);
+    raisim::Vec<3> base_position_tmp;
+    Eigen::VectorXd base_position = Eigen::VectorXd::Zero(3);
+    raisim::Mat<3,3> base_rot;
+    Eigen::VectorXd base_euler = Eigen::VectorXd::Zero(3);
+    Eigen::VectorXd CoM_position = Eigen::VectorXd::Zero(3);
 
     auto date_time = Utils::get_current_date_time(); 
 
-    std::stringstream ss1;
-    ss1 << std::fixed << std::setprecision(0);
-    ss1 << "EndEffectorDesiredTrajectory_";
-    if(is_attached)
-        ss1 << "attached_";
-    if(is_inclined)
-        ss1 << "inclined_";
-    ss1 << hz << "hz_";
-    ss1 << date_time << ".csv";
-    std::string filename = ss1.str();
-
-    std::stringstream ss2;
-    ss2 << std::fixed << std::setprecision(0);
-    ss2 << "EndEffectorActualTrajectory_";
-    if(is_attached)
-        ss2 << "attached_";
-    if(is_inclined)
-        ss2 << "inclined_";
-    ss2 << hz << "hz_";
-    ss2 << date_time << ".csv";
-    std::string filename2 = ss2.str();
+    std::string filename1 = make_filename("EndEffectorDesiredTrajectory_",is_attached,is_inclined,hz,date_time);
+    std::string filename2 = make_filename("EndEffectorActualTrajectory_",is_attached,is_inclined,hz,date_time);
+    std::string filename3 = make_filename("ObjectPosition_",is_attached,is_inclined,hz,date_time);
+    std::string filename4 = make_filename("BasePosition_",is_attached,is_inclined,hz,date_time);
+    std::string filename5 = make_filename("BaseEuler_",is_attached,is_inclined,hz,date_time);
+    std::string filename6 = make_filename("CoMPosition_",is_attached,is_inclined,hz,date_time);
 
     if(save_data){
-        Utils::write_label_to_csv(filename, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename1, {"time","x","y","z"});
         Utils::write_label_to_csv(filename2, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename3, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename4, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename5, {"time","roll","pitch","yaw"});
+        Utils::write_label_to_csv(filename6, {"time","x","y","z"});
     }
 
     raisim::Vec<3> ee_position;
-
+    // auto sphere_tmp = world.addSphere(0.05, 0.01,"steel",raisim::COLLISION(111),raisim::COLLISION(111));
+    // sphere_tmp->setPosition(raisim::Vec<3>{-0.0234187, 0., 0.725});
+    // sphere_tmp->setBodyType(raisim::BodyType::KINEMATIC);
+    // sphere_tmp->setAppearance("red");
 
     for (int i=0; i<20*hz; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6)
         // get_contact_feet(robot, contact_feet);
+        
         hoqp->solveAllTasks();
         solution_vector = hoqp->getSolution();
         tau = solution_vector.tail(18);
@@ -284,8 +305,20 @@ int main (int argc, char* argv[]) {
             Eigen::VectorXd desired_ee_position = desired_x.head(3);
             robot->getFramePosition("joint6",ee_position);
             Eigen::VectorXd ee_position_eigen = ee_position.e();
-            Utils::write_data_to_csv(filename, world.getWorldTime(), desired_ee_position, true);
+            Utils::write_data_to_csv(filename1, world.getWorldTime(), desired_ee_position, true);
             Utils::write_data_to_csv(filename2, world.getWorldTime(), ee_position_eigen, true);
+            obj_position = pin2->getPosition();
+            Utils::write_data_to_csv(filename3, world.getWorldTime(), obj_position, true);
+            robot->getFramePosition("floating_base",base_position_tmp);
+            base_position = base_position_tmp.e();
+            Utils::write_data_to_csv(filename4, world.getWorldTime(), base_position, true);
+            robot->getFrameOrientation("floating_base",base_rot);
+            Eigen::Quaterniond base_quat = Eigen::Quaterniond(base_rot.e());
+            base_euler = Utils::quat_to_euler(base_quat);
+            Utils::write_data_to_csv(filename5, world.getWorldTime(), base_euler, true);
+            auto CoM_vec = robot->getCompositeCOM();
+            CoM_position = CoM_vec[0].e();
+            Utils::write_data_to_csv(filename6, world.getWorldTime(), CoM_position, true);
         }
         server.integrateWorldThreadSafe();
     }

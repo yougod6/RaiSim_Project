@@ -11,20 +11,19 @@ TaskLS_MoveBase::TaskLS_MoveBase(raisim::World* world, raisim::ArticulatedSystem
 
     J_B_position = Eigen::MatrixXd::Zero(3, dof_);
     J_B_rotation = Eigen::MatrixXd::Zero(3, dof_);
-    J_B_ = Eigen::MatrixXd::Zero(task_dim_, dof_);
+    J_B_ = Eigen::MatrixXd::Zero(6, dof_);
     // J_B_.block(0,0,6,6) = Eigen::MatrixXd::Identity(6,6);
 
-    dJ_B_ = Eigen::MatrixXd::Zero(task_dim_, dof_);
+    dJ_B_ = Eigen::MatrixXd::Zero(6, dof_);
 
     dq_ = Eigen::VectorXd::Zero(dof_);
    
-    desired_xdot_ = Eigen::VectorXd::Zero(task_dim_);
-    desired_xddot_ = Eigen::VectorXd::Zero(task_dim_);
+    desired_xdot_ = Eigen::VectorXd::Zero(6);
+    desired_xddot_ = Eigen::VectorXd::Zero(6);
 
     A_ = Eigen::MatrixXd::Zero(task_dim_,var_dim_);
     b_ = Eigen::VectorXd::Zero(var_dim_);
 
-    A_.block(0,0,task_dim_,dof_) = J_B_; 
 }
 
 TaskLS_MoveBase::~TaskLS_MoveBase(){}
@@ -50,7 +49,13 @@ void TaskLS_MoveBase::updateMatrix()
     // std::cout << "Move Base Matrix PreUpdated" << std::endl;
     update_dJ_B(world_->getTimeStep());
     
-    A_.block(0, 0, task_dim_, dof_) = J_B_;
+    // z position and orientation
+    if(task_dim_==4){
+        A_.block(0,0,task_dim_,dof_) = J_B_.block(2,0,4,dof_);  
+    }
+    else{
+        A_.block(0, 0, task_dim_, dof_) = J_B_;
+    }
     // std::cout << "Move Base Matrix Updated" << std::endl;
 
 }
@@ -63,7 +68,12 @@ void TaskLS_MoveBase::updateVector()
     // makeBaseTrajectory(world_->getWorldTime());
     // std::cout << "Base Trajectory Made" << std::endl;
     updateDesiredBaseAcceleration();
-    b_ = desired_xddot_ - dJ_B_*robot_->getGeneralizedVelocity().e();
+    if(task_dim_==4){
+        b_ = desired_xddot_.tail(4) - dJ_B_.block(2,0,4,dof_)*robot_->getGeneralizedVelocity().e();
+    }
+    else{
+        b_ = desired_xddot_ - dJ_B_*robot_->getGeneralizedVelocity().e();
+    }
     // std::cout << "Move Base Vector Updated" << std::endl;
 }
 

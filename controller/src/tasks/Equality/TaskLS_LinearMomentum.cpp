@@ -68,6 +68,7 @@ void TaskLS_LinearMomentum::updateVector(){
     desired_linear_momentum_rate_ = rate_weight_*(desired_CoM_position_rate_ - CoM_position_rate_) + position_weight_*(desired_CoM_position_ - CoM_position_);
     desired_linear_momentum_rate_ *= CoM_mass_;
     b_ = desired_linear_momentum_rate_ -(P_*R_.inverse()*Qc_.transpose()*(robot_->getNonlinearities(gravity_).e()) + CoM_mass_*gravity_.e());
+    // std::cout << "desired_linear_momentum_rate_ : " << desired_linear_momentum_rate_.transpose() << std::endl;
 }
 
 void TaskLS_LinearMomentum::updateCoMPositionRate(){
@@ -105,6 +106,7 @@ void TaskLS_LinearMomentum::updeateDesiredCoMPosition(){
     desired_CoM_position_(0) = center_of_contacts_(0);
     desired_CoM_position_(1) = center_of_contacts_(1);
     desired_CoM_position_(2) = CoM_position_(2);
+    // std::cout << "desired_CoM_position_ : " << desired_CoM_position_.transpose() << std::endl;
 }
 
 void TaskLS_LinearMomentum::QR_decomposition(){

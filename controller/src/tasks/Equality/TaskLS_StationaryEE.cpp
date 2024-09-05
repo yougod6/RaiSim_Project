@@ -8,17 +8,16 @@ TaskLS_StationaryEE::TaskLS_StationaryEE(raisim::World* world, raisim::Articulat
     gravity_ = world_->getGravity();
     J_EE_position = Eigen::MatrixXd::Zero(3, dof_);
     J_EE_rotation = Eigen::MatrixXd::Zero(3, dof_);
-    J_EE_ = Eigen::MatrixXd::Zero(task_dim_, dof_);
-    dJ_EE_ = Eigen::MatrixXd::Zero(task_dim_, dof_);
+    J_EE_ = Eigen::MatrixXd::Zero(6, dof_);
+    dJ_EE_ = Eigen::MatrixXd::Zero(6, dof_);
     dq_ = Eigen::VectorXd::Zero(dof_);
 
-    desired_xdot_ = Eigen::VectorXd::Zero(task_dim_);
-    desired_xddot_ = Eigen::VectorXd::Zero(task_dim_);
+    desired_xdot_ = Eigen::VectorXd::Zero(6);
+    desired_xddot_ = Eigen::VectorXd::Zero(6);
 
     A_ = Eigen::MatrixXd::Zero(task_dim_, var_dim_);
     b_ = Eigen::VectorXd::Zero(var_dim_);
 
-    A_.block(0, 0, task_dim_, dof_) = J_EE_;
 }
 
 TaskLS_StationaryEE::~TaskLS_StationaryEE(){}
@@ -42,15 +41,24 @@ void TaskLS_StationaryEE::update_J_EE()
 void TaskLS_StationaryEE::updateMatrix()
 {
     update_dJ_EE(world_->getTimeStep());
-
-    A_.block(0, 0, task_dim_, dof_) = J_EE_;
+    if(task_dim_==3){
+        A_.block(0,0,task_dim_,dof_) = J_EE_.block(0,0,3,dof_);
+    }
+    else{
+        A_.block(0, 0, task_dim_, dof_) = J_EE_;
+    }
 }
 
 void TaskLS_StationaryEE::updateVector()
 {
     // makeEETrajectory(world_->getWorldTime());
     updateDesiredBaseAcceleration();
-    b_ = desired_xddot_ - dJ_EE_*robot_->getGeneralizedVelocity().e();
+    if(task_dim_==3){
+        b_ = desired_xddot_.head(3) - dJ_EE_.block(0,0,3,dof_)*robot_->getGeneralizedVelocity().e();
+    }
+    else{
+        b_ = desired_xddot_ - dJ_EE_*robot_->getGeneralizedVelocity().e();
+    }
 }
 
 // void TaskLS_StationaryEE::makeEETrajectory(double time)
@@ -66,7 +74,7 @@ void TaskLS_StationaryEE::updateDesiredEEPose(Eigen::VectorXd desired_x){
 
 void TaskLS_StationaryEE::updateDesiredBaseAcceleration()
 {
-    Eigen::VectorXd x = Eigen::VectorXd::Zero(task_dim_);
+    Eigen::VectorXd x = Eigen::VectorXd::Zero(6);
     raisim::Vec<3> ee_position = Eigen::VectorXd::Zero(3);
     raisim::Mat<3,3> wRee;
     robot_->getFramePosition("joint6",ee_position);
@@ -76,7 +84,7 @@ void TaskLS_StationaryEE::updateDesiredBaseAcceleration()
     x.head(3) = ee_position.e();
     x.tail(3) = ee_euler;
 
-    Eigen::VectorXd xdot = Eigen::VectorXd::Zero(task_dim_);
+    Eigen::VectorXd xdot = Eigen::VectorXd::Zero(6);
     raisim::Vec<3> ee_velocity;
     raisim::Vec<3> ee_angular_velocity;
     robot_->getFrameVelocity("joint6",ee_velocity);

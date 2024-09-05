@@ -49,13 +49,23 @@ void get_contact_feet(raisim::ArticulatedSystem* robot, std::vector<bool>& conta
 
 
 int main (int argc, char* argv[]) {
+
+    bool is_attached = true;
+    bool is_inclined = true;
+    double hz = 100;
+    for(int i=1; i<argc; i++){
+        if(i==1) is_attached = std::stoi(argv[i]);
+        if(i==2) is_inclined = std::stoi(argv[i]);
+        if(i==3) hz = std::stod(argv[i]);
+    }
+    std::cout << "is_attached : " << is_attached << std::endl;
+    std::cout << "is_inclined : " << is_inclined << std::endl;
+    std::cout << "hz : " << hz << std::endl;
+
     raisim::World world;
     auto ground = world.addGround(0., "default", raisim::COLLISION(-1));
-    bool is_attached = false;
-    bool is_inclined = true;
     
     raisim::Vec<3> gravity = world.getGravity();
-    const double hz = 100;
     world.setTimeStep(1/hz);
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
     auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf", "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));

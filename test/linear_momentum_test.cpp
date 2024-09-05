@@ -2,6 +2,7 @@
 #include "raisim/RaisimServer.hpp"
 #include "TaskLS_ID.hpp"
 #include "TaskLS_StationaryFeet.hpp"
+#include "TaskLS_LinearMomentum.hpp"
 #include "TaskLS_MoveBase.hpp"
 #include "TaskLS_StationaryEE.hpp"
 #include "TaskLS_MinMotion.hpp"
@@ -46,31 +47,6 @@ void get_contact_feet(raisim::ArticulatedSystem* robot, std::vector<bool>& conta
         if(idx == 9) contact_feet[2] = true;
         if(idx == 12) contact_feet[3] = true;
     }
-}
-
-void get_center_of_contact(raisim::ArticulatedSystem* robot, Eigen::VectorXd& center_of_contact){
-    auto contacts = robot->getContacts();
-    center_of_contact = Eigen::VectorXd::Zero(3);
-    for(auto contact : contacts){
-        auto idx = contact.getlocalBodyIndex();
-        if(idx == 3) {
-            // std::cout << "FR : " <<contact.getPosition().e().transpose() << std::endl;
-            center_of_contact += contact.getPosition().e();
-            }
-        if(idx == 6) {
-            // std::cout << "FL : " << contact.getPosition().e().transpose() << std::endl;
-            center_of_contact += contact.getPosition().e();
-            }
-        if(idx == 9){
-            // std::cout << "RR : " << contact.getPosition().e().transpose() << std::endl;
-            center_of_contact += contact.getPosition().e();
-        }
-        if(idx == 12){
-            // std::cout << "RL : " << contact.getPosition().e().transpose() << std::endl;
-            center_of_contact += contact.getPosition().e();
-        }
-    }
-    center_of_contact /= 4;
 }
 
 int main (int argc, char* argv[]) {
@@ -169,12 +145,16 @@ int main (int argc, char* argv[]) {
         sphere->setBodyType(raisim::BodyType::KINEMATIC);
         sphere->setPosition(raisim::Vec<3>{-0.0490382,0.00157048,offset+0.43});
     }
-            
+
+    Eigen::Vector3d rate_weight = 50*Eigen::Vector3d::Ones(3);
+    Eigen::Vector3d position_weight = 100*Eigen::Vector3d::Ones(3);
+
     std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(&world, robot, 12, 42);
     std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(&world, robot, 12, 42);
-    std::unique_ptr<TaskLS_StationaryEE> task3 = std::make_unique<TaskLS_StationaryEE>(&world, robot, 6, 42, desired_x,300,2*sqrt(150));
-    std::unique_ptr<TaskLS_MoveBase> task4 = std::make_unique<TaskLS_MoveBase>(&world, robot, 6, 42, base_desired_x, 300, 2*sqrt(150));
-    std::unique_ptr<TaskLS> task5 = std::make_unique<TaskLS_EnergyOpt>(&world, robot, 42);
+    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_LinearMomentum>(&world, robot, 3, 42, rate_weight, position_weight);
+    std::unique_ptr<TaskLS_StationaryEE> task4 = std::make_unique<TaskLS_StationaryEE>(&world, robot, 6, 42, desired_x,300,2*sqrt(150));
+    std::unique_ptr<TaskLS_MoveBase> task5 = std::make_unique<TaskLS_MoveBase>(&world, robot, 6, 42, base_desired_x, 100, 2*sqrt(100));
+    std::unique_ptr<TaskLS> task6 = std::make_unique<TaskLS_EnergyOpt>(&world, robot, 42);
     
     Eigen::VectorXd tau_min = -40*Eigen::VectorXd::Ones(18);
     Eigen::VectorXd tau_max = 40*Eigen::VectorXd::Ones(18);
@@ -188,21 +168,24 @@ int main (int argc, char* argv[]) {
     std::unique_ptr<TaskSet> task_set3 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set4 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set5 = std::make_unique<TaskSet>(42);
+    std::unique_ptr<TaskSet> task_set6 = std::make_unique<TaskSet>(42);
     task_set1->addEqualityTask(task1.get());
     task_set2->addEqualityTask(task2.get());
     task_set2->addInequalityTask(constraints1.get());
     task_set3->addEqualityTask(task3.get());
-    task_set3->addInequalityTask(constraints2.get());
     task_set4->addEqualityTask(task4.get());
+    task_set4->addInequalityTask(constraints2.get());
     task_set5->addEqualityTask(task5.get());
+    task_set6->addEqualityTask(task6.get());
 
     std::unique_ptr<HOQP_Slack> hoqp = std::make_unique<HOQP_Slack>();
 
     hoqp->addTask(task_set1.get());
     hoqp->addTask(task_set2.get());
-    hoqp->addTask(task_set3.get());
     hoqp->addTask(task_set4.get());
     hoqp->addTask(task_set5.get());
+    hoqp->addTask(task_set3.get());
+    hoqp->addTask(task_set6.get());
     hoqp->init();   
 
     Eigen::VectorXd solution_vector;
@@ -242,21 +225,8 @@ int main (int argc, char* argv[]) {
         wire->setStretchType(raisim::LengthConstraint::StretchType::BOTH);
     }
 
-    auto CoM_Sphere = world.addSphere(0.05, 1.0, "default",raisim::COLLISION(6), raisim::COLLISION(6));
-    CoM_Sphere->setBodyType(raisim::BodyType::KINEMATIC);
-    CoM_Sphere->setAppearance("green");
-    Eigen::VectorXd center_of_contact = Eigen::VectorXd::Zero(3);
-    auto CoC_Sphere = world.addSphere(0.05, 1.0, "default",raisim::COLLISION(7), raisim::COLLISION(7));
-    CoC_Sphere->setBodyType(raisim::BodyType::KINEMATIC);
-    CoC_Sphere->setAppearance("red");
-
-
     for (int i=0; i<100000; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6)
-        auto CoM = robot->getCompositeCOM();
-        CoM_Sphere->setPosition(CoM[0]);
-        get_center_of_contact(robot, center_of_contact);
-        CoC_Sphere->setPosition(center_of_contact(0),center_of_contact(1),0);
         // get_contact_feet(robot, contact_feet);
         hoqp->solveAllTasks();
         solution_vector = hoqp->getSolution();
@@ -268,7 +238,7 @@ int main (int argc, char* argv[]) {
         // // 10 seconds later, exert external force on the robot
         if(i>5*hz && i<15*hz){
             make_ee_trajectory(world.getWorldTime()-5, desired_x,offset);
-            task3->updateDesiredEEPose(desired_x);
+            task4->updateDesiredEEPose(desired_x);
             server.lockVisualizationServerMutex();
             if (ee_traj_line->points.size() > 500){
                 ee_traj_line->points.erase(ee_traj_line->points.begin());

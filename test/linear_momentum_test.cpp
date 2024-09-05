@@ -53,10 +53,12 @@ int main (int argc, char* argv[]) {
     bool is_attached = true;
     bool is_inclined = true;
     double hz = 100;
+    bool save_data = false;
     for(int i=1; i<argc; i++){
         if(i==1) is_attached = std::stoi(argv[i]);
         if(i==2) is_inclined = std::stoi(argv[i]);
         if(i==3) hz = std::stod(argv[i]);
+        if(i==4) save_data = std::stod(argv[i]);
     }
     std::cout << "is_attached : " << is_attached << std::endl;
     std::cout << "is_inclined : " << is_inclined << std::endl;
@@ -140,10 +142,6 @@ int main (int argc, char* argv[]) {
                     0,
                     0;
         base_desired_x.tail(3) = euler;
-            
-        auto sphere = world.addSphere(0.05, 0.01,"steel",raisim::COLLISION(1),raisim::COLLISION(1));
-        sphere->setBodyType(raisim::BodyType::KINEMATIC);
-        sphere->setPosition(raisim::Vec<3>{-0.0490382,0.00157048,offset+0.43});
     }
 
     Eigen::Vector3d rate_weight = 50*Eigen::Vector3d::Ones(3);
@@ -225,7 +223,39 @@ int main (int argc, char* argv[]) {
         wire->setStretchType(raisim::LengthConstraint::StretchType::BOTH);
     }
 
-    for (int i=0; i<100000; i++) {
+    auto date_time = Utils::get_current_date_time(); 
+
+    std::stringstream ss1;
+    ss1 << std::fixed << std::setprecision(0);
+    ss1 << "EndEffectorDesiredTrajectory_";
+    if(is_attached)
+        ss1 << "attached_";
+    if(is_inclined)
+        ss1 << "inclined_";
+    ss1 << hz << "hz_";
+    ss1 << date_time << ".csv";
+    std::string filename = ss1.str();
+
+    std::stringstream ss2;
+    ss2 << std::fixed << std::setprecision(0);
+    ss2 << "EndEffectorActualTrajectory_";
+    if(is_attached)
+        ss2 << "attached_";
+    if(is_inclined)
+        ss2 << "inclined_";
+    ss2 << hz << "hz_";
+    ss2 << date_time << ".csv";
+    std::string filename2 = ss2.str();
+
+    if(save_data){
+        Utils::write_label_to_csv(filename, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename2, {"time","x","y","z"});
+    }
+
+    raisim::Vec<3> ee_position;
+
+
+    for (int i=0; i<20*hz; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6)
         // get_contact_feet(robot, contact_feet);
         hoqp->solveAllTasks();
@@ -250,7 +280,13 @@ int main (int argc, char* argv[]) {
             server.unlockVisualizationServerMutex();
             // trajectory_visualization(ee_traj_line, desired_x);
         }
-        
+        if(save_data){
+            Eigen::VectorXd desired_ee_position = desired_x.head(3);
+            robot->getFramePosition("joint6",ee_position);
+            Eigen::VectorXd ee_position_eigen = ee_position.e();
+            Utils::write_data_to_csv(filename, world.getWorldTime(), desired_ee_position, true);
+            Utils::write_data_to_csv(filename2, world.getWorldTime(), ee_position_eigen, true);
+        }
         server.integrateWorldThreadSafe();
     }
     server.killServer();

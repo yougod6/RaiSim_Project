@@ -7,4 +7,7 @@ class Utils {
         static Eigen::Vector3d quat_to_euler(Eigen::Quaterniond q);
         static Eigen::Matrix3d skew(Eigen::Vector3d v);
         static Eigen::MatrixXd compute_nullspace_QR(const Eigen::MatrixXd& A);
+        static void write_label_to_csv(std::string filename, std::vector<std::string> labels);
+        static void write_data_to_csv(std::string& filename, double time, Eigen::VectorXd& data, bool append=true);
+        static std::string get_current_date_time();
 };

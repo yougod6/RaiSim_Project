@@ -100,5 +100,8 @@ int main (int argc, char* argv[]) {
     // Print the final D_tilde matrix
     printMatrix(D_tilde, "D_tilde");
 
+    auto time = Utils::get_current_date_time();
+    std::cout << "Current time: " << time << std::endl;
+
     return 0;
 }

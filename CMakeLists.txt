@@ -103,6 +103,24 @@ set(test_linear_momentum_SRCS test/linear_momentum_test.cpp
     ${INEQUALITY_TASKS_PATH}/TaskLS_TorqueLimits.cpp
     ${INEQUALITY_TASKS_PATH}/TaskLS_FrictionCone.cpp
     utils/Utils.cpp)
+
+set(test_momentum_SRCS test/momentum_test.cpp
+    controller/src/OsqpEigenSolver.cpp
+    controller/src/HOQP_Slack.cpp
+    controller/src/Tasks/TaskSet.cpp
+    controller/src/tasks/TaskLS.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_ID.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryFeet.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_LinearMomentum.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_AngularMomentum.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MoveBase.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_StationaryEE.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_MinMotion.cpp
+    ${EQUALITY_TASKS_PATH}/TaskLS_EnergyOpt.cpp
+    ${INEQUALITY_TASKS_PATH}/TaskLS_TorqueLimits.cpp
+    ${INEQUALITY_TASKS_PATH}/TaskLS_FrictionCone.cpp
+    utils/Utils.cpp)
+
 include(FetchContent)
 
 FetchContent_Declare(matplotplusplus
@@ -165,4 +183,5 @@ add_custom_executable(test_utils "${test_utils_SRCS}" "")
 add_custom_executable(test_HOQP_slack "${test_HOQP_slack_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
 add_custom_executable(test_slope "${test_slope_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
 add_custom_executable(test_linear_momentum "${test_linear_momentum_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
+add_custom_executable(test_momentum "${test_momentum_SRCS}" "osqp::osqp;OsqpEigen::OsqpEigen")
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/rsc DESTINATION ${CMAKE_BINARY_DIR})

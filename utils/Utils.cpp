@@ -63,7 +63,7 @@ Eigen::MatrixXd Utils::compute_nullspace_QR(const Eigen::MatrixXd& A)
 {
     if(A.rows() >= A.cols())
     {   
-        std::cout << "Error: A.rows() >= A.cols()" << std::endl;    
+        // std::cout << "Error: A.rows() >= A.cols()" << std::endl;    
         return Eigen::MatrixXd::Zero(A.cols(),A.cols());
     }
     Eigen::MatrixXd AT = A.transpose(); // R(A) = C(A^T)

@@ -3,6 +3,7 @@
 #include "TaskLS_ID.hpp"
 #include "TaskLS_StationaryFeet.hpp"
 #include "TaskLS_LinearMomentum.hpp"
+#include "TaskLS_AngularMomentum.hpp"
 #include "TaskLS_MoveBase.hpp"
 #include "TaskLS_StationaryEE.hpp"
 #include "TaskLS_MinMotion.hpp"
@@ -62,20 +63,22 @@ std::string make_file_dir(std::string date_time, bool is_attached,bool is_inclin
     return ss1.str();   
 }
 
-
 int main (int argc, char* argv[]) {
     bool is_attached = true;
     bool is_inclined = true;
+    bool momentum_control = true;
     double hz = 100;
     bool save_data = false;
     for(int i=1; i<argc; i++){
         if(i==1) is_attached = std::stoi(argv[i]);
         if(i==2) is_inclined = std::stoi(argv[i]);
-        if(i==3) hz = std::stod(argv[i]);
-        if(i==4) save_data = std::stod(argv[i]);
+        if(i==3) momentum_control = std::stoi(argv[i]);
+        if(i==4) hz = std::stod(argv[i]);
+        if(i==5) save_data = std::stod(argv[i]);
     }
     std::cout << "is_attached : " << is_attached << std::endl;
     std::cout << "is_inclined : " << is_inclined << std::endl;
+    std::cout << "momentum_control : " << momentum_control << std::endl;
     std::cout << "hz : " << hz << std::endl;
     std::cout << "save_data : " << save_data << std::endl;
     
@@ -85,7 +88,6 @@ int main (int argc, char* argv[]) {
     world.setTimeStep(1/hz);
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
     auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf", "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
-    // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1_obj.urdf", "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
     
     Eigen::VectorXd jointNominalConfig(robot->getGeneralizedCoordinateDim());
     jointNominalConfig << 0.0, 0.0, 0.43, //base position
@@ -166,42 +168,48 @@ int main (int argc, char* argv[]) {
     Eigen::Vector3d rate_weight = 50*Eigen::Vector3d::Ones(3);
     Eigen::Vector3d position_weight = 100*Eigen::Vector3d::Ones(3);
 
-    std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(&world, robot, 12, 42);
-    std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(&world, robot, 12, 42);
-    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_LinearMomentum>(&world, robot, 3, 42, rate_weight, position_weight);
-    std::unique_ptr<TaskLS_StationaryEE> task4 = std::make_unique<TaskLS_StationaryEE>(&world, robot, 6, 42, desired_x,300,2*sqrt(150));
-    std::unique_ptr<TaskLS_MoveBase> task5 = std::make_unique<TaskLS_MoveBase>(&world, robot, 6, 42, base_desired_x, 100, 2*sqrt(100));
-    std::unique_ptr<TaskLS> task6 = std::make_unique<TaskLS_EnergyOpt>(&world, robot, 42);
+    std::unique_ptr<TaskLS> task_ID = std::make_unique<TaskLS_ID>(&world, robot, 12, 42);
+    std::unique_ptr<TaskLS> task_feet = std::make_unique<TaskLS_StationaryFeet>(&world, robot, 12, 42);
+    std::unique_ptr<TaskLS_StationaryEE> task_ee = std::make_unique<TaskLS_StationaryEE>(&world, robot, 6, 42, desired_x,300,2*sqrt(150));
+    std::unique_ptr<TaskLS_MoveBase> task_base = std::make_unique<TaskLS_MoveBase>(&world, robot, 6, 42, base_desired_x, 100, 2*sqrt(100));
+    std::unique_ptr<TaskLS> task_linear_momentum = std::make_unique<TaskLS_LinearMomentum>(&world, robot, 3, 42, rate_weight, position_weight);
+    std::unique_ptr<TaskLS> task_angular_momentum = std::make_unique<TaskLS_AngularMomentum>(&world, robot, 3, 42, rate_weight);
+    std::unique_ptr<TaskLS> task_Eopt = std::make_unique<TaskLS_EnergyOpt>(&world, robot, 42);
     
     Eigen::VectorXd tau_min = -40*Eigen::VectorXd::Ones(18);
     Eigen::VectorXd tau_max = 40*Eigen::VectorXd::Ones(18);
     tau_min.tail(6) << -30, -60, -30, -30, -30, -30;
     tau_max.tail(6) << 30, 60, 30, 30, 30, 30;
-    std::unique_ptr<TaskLS> constraints1 = std::make_unique<TaskLS_TorqueLimits>(tau_min, tau_max);
-    std::unique_ptr<TaskLS> constraints2 = std::make_unique<TaskLS_FrictionCone>(&world, robot, 24,42,0.1);
+    std::unique_ptr<TaskLS> constraints_tau = std::make_unique<TaskLS_TorqueLimits>(tau_min, tau_max);
+    std::unique_ptr<TaskLS> constraints_cone = std::make_unique<TaskLS_FrictionCone>(&world, robot, 24,42,0.1);
     std::unique_ptr<TaskSet> task_set1 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set2 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set3 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set4 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set5 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set6 = std::make_unique<TaskSet>(42);
-    task_set1->addEqualityTask(task1.get());
-    task_set2->addEqualityTask(task2.get());
-    task_set2->addInequalityTask(constraints1.get());
-    task_set3->addEqualityTask(task3.get());
-    task_set4->addEqualityTask(task4.get());
-    task_set4->addInequalityTask(constraints2.get());
-    task_set5->addEqualityTask(task5.get());
-    task_set6->addEqualityTask(task6.get());
+    std::unique_ptr<TaskSet> task_set7 = std::make_unique<TaskSet>(42);
+    task_set1->addEqualityTask(task_ID.get());
+    task_set2->addEqualityTask(task_feet.get());
+    task_set2->addInequalityTask(constraints_tau.get());
+    task_set3->addEqualityTask(task_ee.get());
+    task_set3->addInequalityTask(constraints_cone.get());
+    task_set4->addEqualityTask(task_base.get());
+    task_set5->addEqualityTask(task_linear_momentum.get());
+    task_set6->addEqualityTask(task_angular_momentum.get());
+    task_set7->addEqualityTask(task_Eopt.get());
 
     std::unique_ptr<HOQP_Slack> hoqp = std::make_unique<HOQP_Slack>();
 
     hoqp->addTask(task_set1.get()); // EoM
-    hoqp->addTask(task_set2.get()); // contact feet
-    hoqp->addTask(task_set4.get()); // EE
-    hoqp->addTask(task_set5.get()); // Base
-    hoqp->addTask(task_set3.get()); // Linear Momentum
-    hoqp->addTask(task_set6.get()); // Energy Opt
+    hoqp->addTask(task_set2.get()); // Feet
+    hoqp->addTask(task_set3.get()); // ee
+    hoqp->addTask(task_set4.get()); // base
+    if(momentum_control){
+        hoqp->addTask(task_set5.get()); // linear momentum
+        hoqp->addTask(task_set6.get()); // angular momentum
+    }
+    hoqp->addTask(task_set7.get()); // energy optimization
     hoqp->init();   
 
     Eigen::VectorXd solution_vector;
@@ -231,16 +239,12 @@ int main (int argc, char* argv[]) {
 
     auto pin2 = world.addBox(0.15, 0.5, 0.15, 0.5,"steel",raisim::COLLISION(2),raisim::COLLISION(2));
     if(is_attached){
-        // auto pin = world.addSphere(0.05, 0.01,"steel",raisim::COLLISION(1),raisim::COLLISION(1));
-        // pin->setBodyType(raisim::BodyType::DYNAMIC);
-        // pin->setPosition(raisim::Vec<3>{0.6,0.0,0.5});
         double wire_length = 0.2;
         raisim::Vec<3> ee_posi_tmp;
         robot->getFramePosition("joint6", ee_posi_tmp);
         ee_posi_tmp = ee_posi_tmp + raisim::Vec<3>{0,0,-wire_length};
         pin2->setBodyType(raisim::BodyType::DYNAMIC);
         pin2->setPosition(ee_posi_tmp);
-        // auto wire = world.addCompliantWire(pin, 0, {0,0,0}, robot, 0, {0., 0, 0}, 2.0, 1000);
         auto wire = world.addStiffWire(pin2,0,{0,0,0},robot,18,{0.05,0,0},wire_length);
         wire->setStretchType(raisim::LengthConstraint::StretchType::BOTH);
     }
@@ -311,17 +315,14 @@ int main (int argc, char* argv[]) {
         // // 10 seconds later, exert external force on the robot
         if(i>5*hz && i<15*hz){
             make_ee_trajectory(world.getWorldTime()-5, desired_x,offset);
-            task4->updateDesiredEEPose(desired_x);
+            task_ee->updateDesiredEEPose(desired_x);
             server.lockVisualizationServerMutex();
             if (ee_traj_line->points.size() > 500){
                 ee_traj_line->points.erase(ee_traj_line->points.begin());
             }
             ee_traj_line->points.push_back(desired_x.head(3));
-            // if(is_attached && i>2000)
-            //     pin2->setMass(0.2);
            
             server.unlockVisualizationServerMutex();
-            // trajectory_visualization(ee_traj_line, desired_x);
         }
         if(save_data){
             desired_ee_position_dataset.push_back(desired_x.head(3)); 

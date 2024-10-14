@@ -49,16 +49,16 @@ void get_contact_feet(raisim::ArticulatedSystem* robot, std::vector<bool>& conta
     }
 }
 
-std::string make_filename(std::string prefix, bool is_attached,bool is_inclined, double hz, std::string date_time){
+std::string make_file_dir(std::string date_time, bool is_attached,bool is_inclined, double hz, std::string file_name){
     std::stringstream ss1;
     ss1 << std::fixed << std::setprecision(0);
-    ss1 << prefix;
+    ss1 << date_time << "_";
     if(is_attached)
         ss1 << "attached_";
     if(is_inclined)
         ss1 << "inclined_";
-    ss1 << hz << "hz_";
-    ss1 << date_time << ".csv";
+    ss1 << hz << "hz_/";
+    ss1 << file_name << ".csv";
     return ss1.str();   
 }
 
@@ -77,7 +77,7 @@ int main (int argc, char* argv[]) {
     std::cout << "is_attached : " << is_attached << std::endl;
     std::cout << "is_inclined : " << is_inclined << std::endl;
     std::cout << "hz : " << hz << std::endl;
-
+    
     raisim::World world;
     auto ground = world.addGround(0., "brass", raisim::COLLISION(-1));
     raisim::Vec<3> gravity = world.getGravity();
@@ -135,6 +135,8 @@ int main (int argc, char* argv[]) {
         offset =size_x*sin(slope_angle_rad)/2 + size_z/2;
         Eigen::Quaterniond slope_quat = Eigen::Quaterniond(slope_rot);
         Eigen::Quaterniond robot_quat = Eigen::Quaterniond(robot_rot);
+        slope_quat.normalize();
+        robot_quat.normalize();
 
         jointNominalConfig << 0.0, 0.0, 0.43+offset, //base position
                           robot_quat.w() ,robot_quat.x(), robot_quat.y(), robot_quat.z(),//1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
@@ -176,7 +178,7 @@ int main (int argc, char* argv[]) {
     tau_max.tail(6) << 30, 60, 30, 30, 30, 30;
     std::unique_ptr<TaskLS> constraints1 = std::make_unique<TaskLS_TorqueLimits>(tau_min, tau_max);
     std::unique_ptr<TaskLS> constraints2 = std::make_unique<TaskLS_FrictionCone>(&world, robot, 24,42,0.1);
-
+    robot->printOutMovableJointNamesInOrder();
     std::unique_ptr<TaskSet> task_set1 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set2 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set3 = std::make_unique<TaskSet>(42);
@@ -219,7 +221,7 @@ int main (int argc, char* argv[]) {
     robot->setGeneralizedCoordinate(jointNominalConfig);
     robot->setGeneralizedForce(Eigen::VectorXd::Zero(robot->getDOF())); 
     robot->setName("aliengo + Z1");
-    // robot->printOutBodyNamesInOrder();
+    robot->printOutBodyNamesInOrder();
     robot->getCollisionBody("FL_foot").setMaterial("steel");    
     robot->getCollisionBody("FR_foot").setMaterial("steel");
     robot->getCollisionBody("RL_foot").setMaterial("steel");
@@ -243,42 +245,49 @@ int main (int argc, char* argv[]) {
         auto wire = world.addStiffWire(pin2,0,{0,0,0},robot,18,{0.05,0,0},wire_length);
         wire->setStretchType(raisim::LengthConstraint::StretchType::BOTH);
     }
-    robot->printOutFrameNamesInOrder();
     Eigen::VectorXd obj_position = Eigen::VectorXd::Zero(3);
+    std::vector<Eigen::VectorXd> obj_position_dataset;
     raisim::Vec<3> base_position_tmp;
     Eigen::VectorXd base_position = Eigen::VectorXd::Zero(3);
+    std::vector<Eigen::VectorXd> base_position_dataset;
     raisim::Mat<3,3> base_rot;
     Eigen::VectorXd base_euler = Eigen::VectorXd::Zero(3);
+    std::vector<Eigen::VectorXd> base_euler_dataset;
     Eigen::VectorXd CoM_position = Eigen::VectorXd::Zero(3);
+    std::vector<Eigen::VectorXd> CoM_position_dataset;
+
+    std::vector<Eigen::VectorXd> desired_ee_position_dataset;
+    std::vector<Eigen::VectorXd> ee_position_dataset;
+
+    std::vector<Eigen::VectorXd> obj_force_dataset;
+    std::vector<Eigen::VectorXd> joint_torques_dataset;
+    
+    std::vector<double> time_dataset;
 
     auto date_time = Utils::get_current_date_time(); 
 
-    std::string filename1 = make_filename("EndEffectorDesiredTrajectory_",is_attached,is_inclined,hz,date_time);
-    std::string filename2 = make_filename("EndEffectorActualTrajectory_",is_attached,is_inclined,hz,date_time);
-    std::string filename3 = make_filename("ObjectPosition_",is_attached,is_inclined,hz,date_time);
-    std::string filename4 = make_filename("BasePosition_",is_attached,is_inclined,hz,date_time);
-    std::string filename5 = make_filename("BaseEuler_",is_attached,is_inclined,hz,date_time);
-    std::string filename6 = make_filename("CoMPosition_",is_attached,is_inclined,hz,date_time);
-
-    if(save_data){
-        Utils::write_label_to_csv(filename1, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename2, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename3, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename4, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename5, {"time","roll","pitch","yaw"});
-        Utils::write_label_to_csv(filename6, {"time","x","y","z"});
-    }
+    std::string filename1 = make_file_dir(date_time, is_attached, is_inclined, hz, "EndEffectorDesiredTrajectory_");
+    std::string filename2 = make_file_dir(date_time, is_attached, is_inclined, hz, "EndEffectorActualTrajectory_");
+    std::string filename3 = make_file_dir(date_time, is_attached, is_inclined, hz, "ObjectPosition_");
+    std::string filename4 = make_file_dir(date_time, is_attached, is_inclined, hz, "BasePosition_");
+    std::string filename5 = make_file_dir(date_time, is_attached, is_inclined, hz, "BaseEuler_");       
+    std::string filename6 = make_file_dir(date_time, is_attached, is_inclined, hz, "CoMPosition_");
+    std::string filename7 = make_file_dir(date_time, is_attached, is_inclined, hz, "ObjForce_");
+    std::string filename8 = make_file_dir(date_time, is_attached, is_inclined, hz, "JointTorques_");
 
     raisim::Vec<3> ee_position;
+    raisim::Vec<3> obj_lm;
+    raisim::Vec<3> obj_lm_prev;
+    Eigen::VectorXd obj_force = Eigen::VectorXd::Zero(3);
     // auto sphere_tmp = world.addSphere(0.05, 0.01,"steel",raisim::COLLISION(111),raisim::COLLISION(111));
     // sphere_tmp->setPosition(raisim::Vec<3>{-0.0234187, 0., 0.725});
     // sphere_tmp->setBodyType(raisim::BodyType::KINEMATIC);
     // sphere_tmp->setAppearance("red");
-
-    for (int i=0; i<20*hz; i++) {
+    int i = 0;
+    for (i=0; i<20*hz; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6)
+        obj_lm = pin2->getLinearMomentum();
         // get_contact_feet(robot, contact_feet);
-        
         hoqp->solveAllTasks();
         solution_vector = hoqp->getSolution();
         tau = solution_vector.tail(18);
@@ -302,26 +311,51 @@ int main (int argc, char* argv[]) {
             // trajectory_visualization(ee_traj_line, desired_x);
         }
         if(save_data){
-            Eigen::VectorXd desired_ee_position = desired_x.head(3);
+            desired_ee_position_dataset.push_back(desired_x.head(3)); 
             robot->getFramePosition("joint6",ee_position);
-            Eigen::VectorXd ee_position_eigen = ee_position.e();
-            Utils::write_data_to_csv(filename1, world.getWorldTime(), desired_ee_position, true);
-            Utils::write_data_to_csv(filename2, world.getWorldTime(), ee_position_eigen, true);
+            ee_position_dataset.push_back(ee_position.e());
             obj_position = pin2->getPosition();
-            Utils::write_data_to_csv(filename3, world.getWorldTime(), obj_position, true);
+            obj_position_dataset.push_back(obj_position);
             robot->getFramePosition("floating_base",base_position_tmp);
             base_position = base_position_tmp.e();
-            Utils::write_data_to_csv(filename4, world.getWorldTime(), base_position, true);
+            base_position_dataset.push_back(base_position);
             robot->getFrameOrientation("floating_base",base_rot);
             Eigen::Quaterniond base_quat = Eigen::Quaterniond(base_rot.e());
+            base_quat.normalize();
             base_euler = Utils::quat_to_euler(base_quat);
-            Utils::write_data_to_csv(filename5, world.getWorldTime(), base_euler, true);
+            base_euler_dataset.push_back(base_euler);
             auto CoM_vec = robot->getCompositeCOM();
             CoM_position = CoM_vec[0].e();
-            Utils::write_data_to_csv(filename6, world.getWorldTime(), CoM_position, true);
+            CoM_position_dataset.push_back(CoM_position);
+            obj_force = (obj_lm.e() - obj_lm_prev.e())/world.getTimeStep();
+            obj_force_dataset.push_back(obj_force);
+            joint_torques_dataset.push_back(tau);
+            time_dataset.push_back(world.getWorldTime());
         }
+        obj_lm_prev = obj_lm;
+
         server.integrateWorldThreadSafe();
     }
+    if(i==(20*hz) && save_data){
+        Utils::write_label_to_csv(filename1, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename2, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename3, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename4, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename5, {"time","roll","pitch","yaw"});
+        Utils::write_label_to_csv(filename6, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename7, {"time","x","y","z"});
+        Utils::write_label_to_csv(filename8, {"time","tau1","tau2","tau3","tau4","tau5","tau6","tau7","tau8","tau9","tau10","tau11","tau12","tau13","tau14","tau15","tau16","tau17","tau18"});
+
+        Utils::write_data_to_csv(filename1, time_dataset, desired_ee_position_dataset);
+        Utils::write_data_to_csv(filename2, time_dataset, ee_position_dataset);
+        Utils::write_data_to_csv(filename3, time_dataset, obj_position_dataset);
+        Utils::write_data_to_csv(filename4, time_dataset, base_position_dataset);
+        Utils::write_data_to_csv(filename5, time_dataset, base_euler_dataset);
+        Utils::write_data_to_csv(filename6, time_dataset, CoM_position_dataset);
+        Utils::write_data_to_csv(filename7, time_dataset, obj_force_dataset);
+        Utils::write_data_to_csv(filename8, time_dataset, joint_torques_dataset);
+    }
+   
     server.killServer();
 
     return 0;

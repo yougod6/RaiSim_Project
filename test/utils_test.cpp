@@ -9,10 +9,14 @@ void printMatrix(const Eigen::MatrixXd& mat, const std::string& name) {
 
 
 int main (int argc, char* argv[]) {
-    Eigen::Quaterniond q(0.5, 0.5, 0.5, 0.5);
+    Eigen::Quaterniond q(0.9, 0.5, 0.8, 0.5);
+    q.normalize();
+    std::cout  << "Quaternion: \n" << q.coeffs() << std::endl;
     Eigen::Vector3d euler = Utils::quat_to_euler(q);
     std::cout << "Euler angles: \n" << euler << std::endl;
     std::cout << "--------------------------------" << std::endl;
+    Eigen::Quaterniond euler_to_quat = Utils::euler_to_quat(euler);
+    std::cout << "Quaternion from euler angles: \n" << euler_to_quat.coeffs() << std::endl;
 
     Eigen::Vector3d v(1, 2, 3);
     Eigen::Matrix3d skew = Utils::skew(v);
@@ -103,5 +107,11 @@ int main (int argc, char* argv[]) {
     auto time = Utils::get_current_date_time();
     std::cout << "Current time: " << time << std::endl;
 
+
+    //Test box_minus_operator
+    Eigen::Quaterniond desired_quat(0., 0., 0., 0.1);
+    Eigen::Quaterniond current_quat(0., 0., 0., 0.1);
+    Eigen::Vector3d box_minus = Utils::box_minus_operator(desired_quat, current_quat);
+    std::cout << "Box minus operator: \n" << box_minus << std::endl;    
     return 0;
 }

@@ -1,6 +1,7 @@
 #include "Utils.hpp"
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <ctime>
 
 Eigen::Vector3d Utils::quat_to_euler(Eigen::Quaterniond q)
@@ -32,6 +33,23 @@ Eigen::Vector3d Utils::quat_to_euler(Eigen::Quaterniond q)
     return euler;
 }
 
+Eigen::Quaterniond Utils::euler_to_quat(Eigen::Vector3d euler)
+{
+    Eigen::AngleAxisd yawAngle(euler[2], Eigen::Vector3d::UnitZ());
+    Eigen::AngleAxisd pitchAngle(euler[1], Eigen::Vector3d::UnitY());
+    Eigen::AngleAxisd rollAngle(euler[0], Eigen::Vector3d::UnitX());
+
+    Eigen::Quaterniond q = yawAngle * pitchAngle * rollAngle;
+    return q;
+}
+
+Eigen::Vector3d Utils::box_minus_operator(Eigen::Quaterniond q1, Eigen::Quaterniond q2)
+{
+    Eigen::Quaterniond q_diff = q1 * q2.inverse();
+    Eigen::Vector3d result =  2.0 * atan2(q_diff.vec().norm(), q_diff.w()) * q_diff.vec().normalized();  // Box-minus result
+    return result;
+}
+
 Eigen::Matrix3d Utils::skew(Eigen::Vector3d v)
 {
     Eigen::Matrix3d skew;
@@ -59,6 +77,16 @@ Eigen::MatrixXd Utils::compute_nullspace_QR(const Eigen::MatrixXd& A)
 
 void Utils::write_label_to_csv(std::string filename, std::vector<std::string> labels)
 {
+    std::filesystem::path filePath(filename);
+    std::filesystem::path dirPath = filePath.parent_path(); // get the directory path
+
+    if (!std::filesystem::exists(dirPath)) {
+        if(!std::filesystem::create_directories(dirPath)){
+            std::cerr << "Err : cannot create the directory" << dirPath << std::endl;
+            return;
+        }
+    }
+
     std::ofstream file;
     file.open(filename);
     if (!file.is_open()) {
@@ -95,6 +123,34 @@ void Utils::write_data_to_csv(std::string& filename, double time, Eigen::VectorX
     file.close();
 }
 
+
+void Utils::write_data_to_csv(std::string& filename, std::vector<double>& time, std::vector<Eigen::VectorXd>& data, bool append)
+{
+    std::ofstream file;
+    file.open(filename, append ? std::ios_base::app : std::ios_base::out);
+    if (!file.is_open()) {
+        std::cerr << "Err : cannot open the file" << filename << std::endl;
+        return;
+    }
+    if(time.size() != data.size())
+    {
+        std::cerr << "Err : time.size() != data.size()" << std::endl;
+        return;
+    }
+    for(int i=0; i<time.size(); i++)
+    {
+        file << time[i] << ",";
+        for(int j=0; j<data[i].size(); j++)
+        {
+            file << data[i](j);
+            if(j != data[i].size()-1)
+                file << ",";
+        }
+        file << std::endl;
+    }
+    file.close();
+}
+
 std::string Utils::get_current_date_time() {
     // 현재 시간을 가져옴
     std::time_t now = std::time(nullptr);  // 현재 시간 가져오기
@@ -102,7 +158,7 @@ std::string Utils::get_current_date_time() {
 
     // 스트림에 시간 정보를 포맷하여 저장
     std::stringstream ss;
-    ss << std::put_time(localTime, "%Y_%m_%d_%H:%M:%S");  // 형식 지정: YYYY-MM-DD HH:MM:SS
+    ss << std::put_time(localTime, "%y_%m_%d_%H:%M");  // 형식 지정: YYYY-MM-DD HH:MM:SS
 
     return ss.str();  // 문자열 반환
 }

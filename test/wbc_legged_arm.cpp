@@ -80,9 +80,9 @@ int main (int argc, char* argv[]) {
                           0.0, 0.6, -1.3,
                           0, 2.57, -1.5,  -1.0,  0. , 0.; // arm joints
 
-    Eigen::VectorXd desired_x = Eigen::VectorXd::Zero(6);
+    Eigen::VectorXd desired_x = Eigen::VectorXd::Zero(7);
     desired_x << 0.65, 0.0, 0.6,
-                0.0, 0.0, 0.0;
+                1.0, 0.0, 0.0, 0.0;
 
     Eigen::VectorXd base_desired_x = Eigen::VectorXd::Zero(6);
     base_desired_x <<   -0.0490382 ,
@@ -118,7 +118,7 @@ int main (int argc, char* argv[]) {
                           0, 2.57, -1.5,  -1.0,  0. , 0.; // arm joints
 
         desired_x << 0.65, 0.0, offset+0.6,
-                    0.0, 0.0, 0.0;
+                    1.0, 0.0, 0.0, 0.0;
         
         base_desired_x <<   -0.0490382 ,
                     0.00157048,

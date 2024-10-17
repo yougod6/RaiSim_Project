@@ -80,10 +80,14 @@ void TaskLS_StationaryEE::updateDesiredBaseAcceleration()
     robot_->getFramePosition("joint6",ee_position);
     robot_->getFrameOrientation("joint6",wRee);
     Eigen::Quaterniond ee_quat = Eigen::Quaterniond(wRee.e());
+    ee_quat.normalize();
     Eigen::Vector3d ee_euler = Utils::quat_to_euler(ee_quat);
     x.head(3) = ee_position.e();
     x.tail(3) = ee_euler;
-
+    Eigen::VectorXd x_err = Eigen::VectorXd::Zero(6);
+    x_err.head(3) = desired_x_.head(3) - x.head(3);
+    Eigen::Quaterniond desired_ee_quat(desired_x_[3], desired_x_[4], desired_x_[5], desired_x_[6]);
+    x_err.tail(3) = Utils::box_minus_operator(desired_ee_quat,ee_quat);
     Eigen::VectorXd xdot = Eigen::VectorXd::Zero(6);
     raisim::Vec<3> ee_velocity;
     raisim::Vec<3> ee_angular_velocity;
@@ -95,6 +99,9 @@ void TaskLS_StationaryEE::updateDesiredBaseAcceleration()
     Eigen::VectorXd kd_vec = kd_*Eigen::VectorXd::Ones(6);
     kp_vec.tail(3) = 100*Eigen::Vector3d::Ones();
     kd_vec.tail(3) = 2*sqrt(100)*Eigen::Vector3d::Ones();
-    desired_xddot_ = kp_*(desired_x_ - x) - kd_*xdot;
+    desired_xddot_ = kp_*(x_err) - kd_*xdot;
+    // std::cout << "desired_quat : " << desired_ee_quat.coeffs().transpose() << std::endl;
+    // std::cout << "current_quat : " << ee_quat.coeffs().transpose() << std::endl;
+    // std::cout << "orientation_err : " << x_err.tail(3).transpose() << std::endl;
 }
 

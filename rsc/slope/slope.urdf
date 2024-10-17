@@ -1,21 +1,28 @@
 <?xml version="1.0" ?>
 <robot name="slope">
-
+  <link name="base">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
   <!-- 경사면의 링크 -->
   <link name="base_link">
     <visual>
       <origin xyz="0 0 0.05" rpy="0 0.4 0"/>  <!-- 경사도 (rpy) 설정 -->
       <geometry>
-        <box size="1 0.5 0.1"/>
+        <mesh filename="/Users/yushin/raisim_workspace/raisimExample/rsc/slope/slope.stl" scale="1 1 1"/> <!-- 경사면의 메쉬 파일 -->
       </geometry>
       <!-- <material name = "gray">
         <color rgba="0.5 0.5 0.5 1.0"/> 
       </material> -->
     </visual>
     <collision>
-      <origin xyz="0 0 0.05" rpy="0 0.4 0"/> <!-- 충돌체와 시각적 요소 정렬 -->
+      <origin xyz="0 0 0" rpy="0 0 0"/> <!-- 충돌체와 시각적 요소 정렬 -->
       <geometry>
-        <box size="1 0.5 0.1"/>
+        <mesh filename="slope.obj" scale="1 1 1"/> <!-- 경사면의 메쉬 파일 -->
       </geometry>
     </collision>
     <inertial>
@@ -27,9 +34,8 @@
 
   <!-- world에 고정하기 위한 조인트 -->
   <joint name="fixed_joint" type="fixed">
-    <parent link="world"/>
+    <parent link="base"/>
     <child link="base_link"/>
     <origin xyz="0 0 0"/>
   </joint>
-
 </robot>

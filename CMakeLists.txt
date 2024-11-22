@@ -138,6 +138,7 @@ find_package(Eigen3 REQUIRED)
 find_package(matplot++ REQUIRED)
 find_package(osqp REQUIRED)
 find_package(OsqpEigen REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 include_directories (${EIGEN3_INCLUDE_DIRS})
 include_directories (controller/include)
@@ -150,6 +151,8 @@ include_directories(utils)
 function(add_raisim_executable target sources)
     add_executable(${target} ${sources})
     target_link_libraries(${target} PUBLIC raisim::raisim)
+    target_link_libraries(${target} PUBLIC yaml-cpp::yaml-cpp) # The library or executable that require yaml-cpp library
+
     if(NOT WIN32)
         target_link_libraries(${target} PUBLIC pthread)
     else()

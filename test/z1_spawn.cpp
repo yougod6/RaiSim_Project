@@ -7,12 +7,13 @@ int main (int argc, char* argv[]) {
     auto ground = world.addGround();
     const double hz = 100;
     world.setTimeStep(1/hz);
+    ground->setAppearance("1,1,1,1");    
+
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
     // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\go2\\go2.urdf");
     // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\b1\\b1.urdf");
     // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\b2\\urdf\\b2_z1.urdf");
     auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf");
-    std::cout << "Loading Excavator" << std::endl;
     // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\assy_concept_r10\\urdf\\assy_concept_r10.urdf");
 
     // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\go1z1.urdf");
@@ -39,11 +40,10 @@ int main (int argc, char* argv[]) {
     robot->setGeneralizedCoordinate(jointNominalConfig);
     robot->setPdGains(jointPgain, jointDgain);
     robot->setPdTarget(jointNominalConfig, jointVelocityTarget);
-    robot->setName("Excavator");
+    robot->setName("Aliengo_Z1");
     raisim::RaisimServer server(&world);
     server.launchServer();
     server.focusOn(robot);
-
     raisim::Vec<3> ee_posi;
     raisim::Mat<3,3> ee_rot;
     raisim::Vec<3> base_posi;

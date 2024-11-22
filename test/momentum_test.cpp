@@ -13,6 +13,7 @@
 #include "HOQP.hpp" 
 #include "HOQP_Slack.hpp"
 #include "Utils.hpp"
+#include "yaml-cpp/yaml.h"
 
 void make_ee_trajectory(const double time, Eigen::VectorXd& desired_x,double offset=0.0){
     const double amplitude = 0.2; //0.15
@@ -20,10 +21,10 @@ void make_ee_trajectory(const double time, Eigen::VectorXd& desired_x,double off
     desired_x << 0.65,
                  0.0+2.*amplitude*sin(2*M_PI*freq*time),
                  offset+0.6-0.5*(amplitude*cos(2*M_PI*freq*time)-amplitude),
-                0.0, 0.0, 0.0;
+                1., 0.0, 0.0, 0.0;
 }
 
-void make_circle_trajectory(const double time, Eigen::VectorXd& desired_x, double offset=0., double duration = 2., double angle = 90.0) {
+void make_circle_trajectory(const double time, Eigen::VectorXd& desired_x, double offset=0., double duration = 3, double angle = 90.0) {
     double x,y,z;
     // 입력된 각도를 라디안으로 변환
     double angle_rad = angle * (M_PI / 180.0); // 도를 라디안으로 변환
@@ -77,7 +78,7 @@ void get_contact_feet(raisim::ArticulatedSystem* robot, std::vector<bool>& conta
     }
 }
 
-std::string make_file_dir(std::string date_time, bool is_attached,int terrain_type, double hz, std::string file_name){
+std::string make_file_dir(std::string date_time, bool is_attached,int terrain_type,int momentum_control, double hz, std::string file_name){
     std::stringstream ss1;
     ss1 << std::fixed << std::setprecision(0);
     ss1 << date_time << "_";
@@ -89,32 +90,85 @@ std::string make_file_dir(std::string date_time, bool is_attached,int terrain_ty
         ss1 << "inclined_";
     else if(terrain_type==2)
         ss1 << "heightmap_";
-    else
-        ss1 << "ERROR_";
+    else {}
+        
+    if(momentum_control==0)
+        ss1 << "no_momentum_";
+    else if(momentum_control==1)
+        ss1 << "linear_";
+    else if(momentum_control==2)
+        ss1 << "angular_";
+    else if(momentum_control==3)
+        ss1 << "both_";
+    else {}
+        
     ss1 << hz << "hz_/";
     ss1 << file_name << ".csv";
     return ss1.str();   
 }
 
 int main (int argc, char* argv[]) {
-    bool is_attached = true;
-    int terrain_type = 0; // 0 : normal, 1 : inclined, 2 : heightmap
-    bool momentum_control = true;
-    double hz = 100;
-    bool save_data = false;
-    for(int i=1; i<argc; i++){
-        if(i==1) is_attached = std::stoi(argv[i]);
-        if(i==2) terrain_type = std::stoi(argv[i]);
-        if(i==3) momentum_control = std::stoi(argv[i]);
-        if(i==4) hz = std::stod(argv[i]);
-        if(i==5) save_data = std::stod(argv[i]);
-    }
-    std::cout << "is_attached : " << is_attached << std::endl;
-    std::cout << "terrain_type : " << terrain_type << "\t (0 : normal / 1 : inclined / 2 : heightmap)"<<std::endl;
-    std::cout << "momentum_control : " << momentum_control << std::endl;
-    std::cout << "hz : " << hz << std::endl;
-    std::cout << "save_data : " << save_data << std::endl;
-    
+    bool is_attached = 0;
+    double obj_mass = 0;
+    double wire_length = 0;
+    int terrain_type = 0;
+    int momentum_control = 0;
+    double traj_duration = 0;
+    double traj_angle = 0;
+    double hz = 0;
+    // YAML 파일 로드
+    YAML::Node config = YAML::LoadFile("../yaml/momentum_test.yaml");
+
+    // SimEnv 노드를 기준으로 파라미터 불러오기
+    is_attached = config["SimEnv"]["is_attached"].as<bool>();
+    obj_mass = config["SimEnv"]["obj_mass"].as<double>();
+    wire_length = config["SimEnv"]["wire_length"].as<double>();
+    terrain_type = config["SimEnv"]["terrain_type"].as<int>();
+    momentum_control = config["SimEnv"]["momentum_control"].as<int>();
+    traj_duration = config["SimEnv"]["traj_duration"].as<double>();
+    traj_angle = config["SimEnv"]["traj_angle"].as<double>();
+    hz = config["SimEnv"]["hz"].as<double>();
+
+    // 파라미터 확인
+    std::cout << "# is_attached : " << is_attached << std::endl;
+    std::cout << "# obj_mass : " << obj_mass << std::endl;
+    std::cout << "# wire_length : " << wire_length << std::endl; 
+    std::cout << "# terrain_type : " << terrain_type << "\t (0 : normal / 1 : inclined / 2 : heightmap)"<<std::endl;
+    std::cout << "# momentum_control : " << momentum_control << "\t (0 : no-momentum / 1 : linear / 2 : anguler/ 3 : both)"<<std::endl;
+    std::cout << "# traj_duration : " << traj_duration << "\t trajectory cycle : " << 2*traj_duration << std::endl;
+    std::cout << "# traj_angle : " << traj_angle << "\t trajectory total angle : " << 2*traj_angle << std::endl;
+    std::cout << "# hz : " << hz << std::endl;
+
+
+    // bool is_attached = true;
+    // int terrain_type = 0; // 0 : normal, 1 : inclined, 2 : heightmap
+    // int momentum_control = 3; // 0 : normal, 1 : linear, 2 : angular, 3 : both
+    // double traj_duration = 2.0; // trajectory cycle = 2*traj_duration
+    // double traj_angle = 90.0; // trajectory total angle = 2*traj_angle
+    // double hz = 100;
+    // bool save_data = false;
+    // for(int i=1; i<argc; i++){
+    //     if(i==1) is_attached = std::stoi(argv[i]);
+    //     if(i==2) {
+    //         if(terrain_type<0 || terrain_type>2){
+    //             std::cout << "terrain_type should be 0, 1, or 2" << std::endl;
+    //             return 0;
+    //         }
+    //         terrain_type = std::stoi(argv[i]);
+    //     }
+    //     if(i==3){
+    //         if(momentum_control<0 || momentum_control>3){
+    //             std::cout << "momentum_control should be 0, 1, 2, or 3" << std::endl;
+    //             return 0;
+    //         }
+    //         momentum_control = std::stoi(argv[i]);
+    //     } 
+    //     if(i==4) traj_duration = std::stod(argv[i]);
+    //     if(i==5) traj_angle = std::stod(argv[i]);
+    //     if(i==6) hz = std::stod(argv[i]);
+    //     if(i==7) save_data = std::stod(argv[i]);
+    // }
+
     raisim::World world;
     auto ground = world.addGround(0., "brass", raisim::COLLISION(-1));
     raisim::Vec<3> gravity = world.getGravity();
@@ -189,7 +243,7 @@ int main (int argc, char* argv[]) {
                     0,
                     0;
         base_desired_x.tail(3) = euler;
-        std::cout << "euler : " << euler.transpose() << std::endl;
+        // std::cout << "euler : " << euler.transpose() << std::endl;
         std::cout << offset+0.43 << std::endl;
     }
 
@@ -295,11 +349,17 @@ int main (int argc, char* argv[]) {
     hoqp->addTask(task_set2.get()); // Feet
     hoqp->addTask(task_set3.get()); // ee
     hoqp->addTask(task_set4.get()); // base
-    if(momentum_control){
+    if(momentum_control == 1){
+        hoqp->addTask(task_set5.get()); // linear momentum
+    }
+    else if(momentum_control == 2){
+        hoqp->addTask(task_set6.get()); // angular momentum
+    }
+    else if(momentum_control == 3){
         hoqp->addTask(task_set5.get()); // linear momentum
         hoqp->addTask(task_set6.get()); // angular momentum
     }
-
+    else {}
     // hoqp->addTask(task_set7.get()); // energy optimization
     hoqp->init();   
 
@@ -342,11 +402,12 @@ int main (int argc, char* argv[]) {
     // std::cout << "friction : " << proper.c_f << std::endl;
     // std::cout << "restitution : " << proper.c_r << std::endl;
     // std::cout << "resThreshold : " << proper.r_th << std::endl;
-    std::cout << "staticFriction : " << proper.c_static_f << std::endl;
+    // std::cout << "staticFriction : " << proper.c_static_f << std::endl;
     // std::cout << "staticFrictionThresholdVelocity : " << proper.v_static_speed << std::endl;
-    auto unknown_obj = world.addBox(0.1, 0.4, 0.1, 0.5,"steel",raisim::COLLISION(2),raisim::COLLISION(2));
+    auto unknown_obj = world.addBox(0.1, 0.4, 0.1, obj_mass,"steel",raisim::COLLISION(2),raisim::COLLISION(2));
+    auto CoM_Sphere = world.addSphere(0.05, 0.01,"steel",raisim::COLLISION(111),raisim::COLLISION(111));
+    Eigen::Vector3d r_obj_com;
     if(is_attached){
-        double wire_length = 0.25;
         raisim::Vec<3> ee_posi_tmp;
         robot->getFramePosition("joint6", ee_posi_tmp);
         ee_posi_tmp = ee_posi_tmp + raisim::Vec<3>{0,0,-wire_length};
@@ -357,13 +418,22 @@ int main (int argc, char* argv[]) {
         //                0, 0, (0.0113542); // (1/12)*0.5*(0.5^2 + 0.15^2)
         // unknown_obj->setInertia(obj_inertia);
         unknown_obj->setBodyType(raisim::BodyType::DYNAMIC);
+        unknown_obj->setAppearance("1,1,1,0.5");
+        // unknown_obj->setAppearance("brown");
         unknown_obj->setPosition(ee_posi_tmp);
-        unknown_obj->setCom({0,((0.4)/2)/3,0});
+        // unknown_obj->setCom({0,((0.4)/2)/3,0});
+        r_obj_com = unknown_obj->getComPosition();
         auto wire = world.addStiffWire(unknown_obj,0,{0,0,0.05},robot,18,{0.05,0,0},wire_length);
         wire->setStretchType(raisim::LengthConstraint::StretchType::BOTH);
+
+        CoM_Sphere->setBodyType(raisim::BodyType::KINEMATIC);
+        CoM_Sphere->setAppearance("red");
+        CoM_Sphere->setPosition(r_obj_com);
+
     }
     Eigen::VectorXd obj_position = Eigen::VectorXd::Zero(3);
     std::vector<Eigen::VectorXd> obj_position_dataset;
+    std::vector<Eigen::VectorXd> obj_CoM_position_dataset;
     raisim::Vec<3> base_position_tmp;
     Eigen::VectorXd base_position = Eigen::VectorXd::Zero(3);
     std::vector<Eigen::VectorXd> base_position_dataset;
@@ -378,49 +448,60 @@ int main (int argc, char* argv[]) {
 
     std::vector<Eigen::VectorXd> obj_force_dataset;
     std::vector<Eigen::VectorXd> joint_torques_dataset;
-    
+    std::vector<Eigen::VectorXd> linear_momentum_dataset;
+    std::vector<Eigen::VectorXd> angular_momentum_dataset;
+
     std::vector<double> time_dataset;
 
     auto date_time = Utils::get_current_date_time(); 
 
-    std::string filename1 = make_file_dir(date_time, is_attached, terrain_type, hz, "EndEffectorDesiredTrajectory_");
-    std::string filename2 = make_file_dir(date_time, is_attached, terrain_type, hz, "EndEffectorActualTrajectory_");
-    std::string filename3 = make_file_dir(date_time, is_attached, terrain_type, hz, "ObjectPosition_");
-    std::string filename4 = make_file_dir(date_time, is_attached, terrain_type, hz, "BasePosition_");
-    std::string filename5 = make_file_dir(date_time, is_attached, terrain_type, hz, "BaseEuler_");       
-    std::string filename6 = make_file_dir(date_time, is_attached, terrain_type, hz, "CoMPosition_");
-    std::string filename7 = make_file_dir(date_time, is_attached, terrain_type, hz, "ObjForce_");
-    std::string filename8 = make_file_dir(date_time, is_attached, terrain_type, hz, "JointTorques_");
+    std::string filename1 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz, "EndEffectorDesiredTrajectory_");
+    std::string filename2 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz, "EndEffectorActualTrajectory_");
+    std::string filename3 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz, "ObjectPosition_");
+    std::string filename4 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz, "ObjectCoMPosition_");
+    std::string filename5 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz,  "BasePosition_");
+    std::string filename6 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz,  "BaseEuler_");       
+    std::string filename7 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz,  "CoMPosition_");
+    std::string filename8 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz,  "ObjForce_");
+    std::string filename9 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz,  "JointTorques_");
+    std::string filename10 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz,  "LinearMomentum_");
+    std::string filename11 = make_file_dir(date_time, is_attached, terrain_type, momentum_control, hz,  "AngularMomentum_");
 
     raisim::Vec<3> ee_position;
     raisim::Vec<3> obj_lm;
     raisim::Vec<3> obj_lm_prev;
     Eigen::VectorXd obj_force = Eigen::VectorXd::Zero(3);
+    raisim::Vec<3> robot_angular_momentum;
     // auto sphere_tmp = world.addSphere(0.05, 0.01,"steel",raisim::COLLISION(111),raisim::COLLISION(111));
     // sphere_tmp->setPosition(raisim::Vec<3>{-0.0234187, 0., 0.725});
     // sphere_tmp->setBodyType(raisim::BodyType::KINEMATIC);
     // sphere_tmp->setAppearance("red");
     int i = 0;
-    for (i=0; i<20*hz; i++) {
+    for (i=0; i<(10+traj_duration*5)*hz; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6)
+        unknown_obj->setCom({0,((0.2)/3)*sin(4*i/hz),0});
+        // auto w_R_obj = unknown_obj->getOrientation();
         obj_lm = unknown_obj->getLinearMomentum();
-
+        r_obj_com = unknown_obj->getComPosition();
+        CoM_Sphere->setPosition(r_obj_com);
         // get_contact_feet(robot, contact_feet);
         hoqp->solveAllTasks();
         solution_vector = hoqp->getSolution();
         tau = solution_vector.tail(18);
         // std::cout << "leg tau : " << tau.head(12).transpose() << std::endl;
         // std::cout << "main tau : " << tau.tail(6).transpose() << std::endl;
+        std::cout << "desired base position : " << base_desired_x.head(3).transpose() << std::endl;
+        std::cout << "desired base euler : " << base_desired_x.tail(3).transpose() << std::endl;
         generalizedForce.tail(18) = tau;
         robot->setGeneralizedForce(generalizedForce);
         // // 10 seconds later, exert external force on the robot
-        if(i>5*hz && i<15*hz){
-            make_circle_trajectory(world.getWorldTime()-5, desired_x,offset);
+        if(i>5*hz && i<(5+traj_duration*5)*hz){
+            make_circle_trajectory(world.getWorldTime()-5, desired_x,offset, traj_duration, traj_angle);
             // make_ee_trajectory(world.getWorldTime()-5, desired_x,offset);
             task_ee->updateDesiredEEPose(desired_x);
             server.lockVisualizationServerMutex();
             if(i%10==0){
-                if (ee_traj_line->points.size() > 100){
+                if (ee_traj_line->points.size() > 200){
                     ee_traj_line->points.erase(ee_traj_line->points.begin());
                 }
             ee_traj_line->points.push_back(desired_x.head(3));
@@ -429,12 +510,13 @@ int main (int argc, char* argv[]) {
            
             server.unlockVisualizationServerMutex();
         }
-        if(save_data){
+        // if(save_data){
             desired_ee_position_dataset.push_back(desired_x.head(3)); 
             robot->getFramePosition("joint6",ee_position);
             ee_position_dataset.push_back(ee_position.e());
             obj_position = unknown_obj->getPosition();
             obj_position_dataset.push_back(obj_position);
+            obj_CoM_position_dataset.push_back(r_obj_com);
             robot->getFramePosition("floating_base",base_position_tmp);
             base_position = base_position_tmp.e();
             base_position_dataset.push_back(base_position);
@@ -450,28 +532,45 @@ int main (int argc, char* argv[]) {
             obj_force_dataset.push_back(obj_force);
             joint_torques_dataset.push_back(tau);
             time_dataset.push_back(world.getWorldTime());
-        }
+            linear_momentum_dataset.push_back(robot->getLinearMomentum().e());
+            robot->getAngularMomentum(CoM_vec[0],robot_angular_momentum);
+            angular_momentum_dataset.push_back(robot_angular_momentum.e());
+        // }
         obj_lm_prev = obj_lm;
         server.integrateWorldThreadSafe();
     }
-    if(i==(20*hz) && save_data){
-        Utils::write_label_to_csv(filename1, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename2, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename3, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename4, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename5, {"time","roll","pitch","yaw"});
-        Utils::write_label_to_csv(filename6, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename7, {"time","x","y","z"});
-        Utils::write_label_to_csv(filename8, {"time","tau1","tau2","tau3","tau4","tau5","tau6","tau7","tau8","tau9","tau10","tau11","tau12","tau13","tau14","tau15","tau16","tau17","tau18"});
+    if(i==((10+traj_duration*5)*hz)){
+        std::string save_data;
+        std::cout << "Do you want to save data? (Y/n) : ";
+        std::cin >> save_data;
 
-        Utils::write_data_to_csv(filename1, time_dataset, desired_ee_position_dataset);
-        Utils::write_data_to_csv(filename2, time_dataset, ee_position_dataset);
-        Utils::write_data_to_csv(filename3, time_dataset, obj_position_dataset);
-        Utils::write_data_to_csv(filename4, time_dataset, base_position_dataset);
-        Utils::write_data_to_csv(filename5, time_dataset, base_euler_dataset);
-        Utils::write_data_to_csv(filename6, time_dataset, CoM_position_dataset);
-        Utils::write_data_to_csv(filename7, time_dataset, obj_force_dataset);
-        Utils::write_data_to_csv(filename8, time_dataset, joint_torques_dataset);
+        // 만약 입력이 없거나 Y를 입력하면 데이터 저장
+        if(save_data == "" || save_data == "Y" || save_data == "y"){
+            Utils::write_label_to_csv(filename1, {"time","x","y","z"});
+            Utils::write_label_to_csv(filename2, {"time","x","y","z"});
+            Utils::write_label_to_csv(filename3, {"time","x","y","z"});
+            Utils::write_label_to_csv(filename4, {"time","x","y","z"});
+            Utils::write_label_to_csv(filename5, {"time","x","y","z"});
+            Utils::write_label_to_csv(filename6, {"time","roll","pitch","yaw"});
+            Utils::write_label_to_csv(filename7, {"time","x","y","z"});
+            Utils::write_label_to_csv(filename8, {"time","x","y","z"});
+            Utils::write_label_to_csv(filename9, {"time","tau1","tau2","tau3","tau4","tau5","tau6","tau7","tau8","tau9","tau10","tau11","tau12","tau13","tau14","tau15","tau16","tau17","tau18"});
+            Utils::write_label_to_csv(filename10, {"time","x","y","z"});
+            Utils::write_label_to_csv(filename11, {"time","x","y","z"});
+
+            Utils::write_data_to_csv(filename1, time_dataset, desired_ee_position_dataset);
+            Utils::write_data_to_csv(filename2, time_dataset, ee_position_dataset);
+            Utils::write_data_to_csv(filename3, time_dataset, obj_position_dataset);
+            Utils::write_data_to_csv(filename4, time_dataset, obj_CoM_position_dataset);
+            Utils::write_data_to_csv(filename5, time_dataset, base_position_dataset);
+            Utils::write_data_to_csv(filename6, time_dataset, base_euler_dataset);
+            Utils::write_data_to_csv(filename7, time_dataset, CoM_position_dataset);
+            Utils::write_data_to_csv(filename8, time_dataset, obj_force_dataset);
+            Utils::write_data_to_csv(filename9, time_dataset, joint_torques_dataset);
+            Utils::write_data_to_csv(filename10, time_dataset, linear_momentum_dataset);
+            Utils::write_data_to_csv(filename11, time_dataset, angular_momentum_dataset);
+        }        
+
     }
    
     server.killServer();

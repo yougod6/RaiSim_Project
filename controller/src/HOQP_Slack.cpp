@@ -33,6 +33,14 @@ void HOQP_Slack::init()
     var_dim_ = stacked_tasks_[0]->getVarDim();
     xopt_ = Eigen::VectorXd::Zero(var_dim_);
     Z_ = Eigen::MatrixXd::Identity(var_dim_, var_dim_);
+    // for(auto task : stacked_tasks_){
+    //     for(auto name : task->getEqualityTaskNames()){
+    //         std::cout << name <<std::endl;
+    //     }
+    //     for(auto name : task->getInequalityTaskNames()){
+    //         std::cout << name <<std::endl;
+    //     }
+    // }
 }
 
 void HOQP_Slack::solve()

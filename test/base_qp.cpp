@@ -48,8 +48,8 @@ int main (int argc, char* argv[]) {
     Eigen::VectorXd jointNominalConfig(go1->getGeneralizedCoordinateDim());
     Eigen::VectorXd jointVelocityTarget(go1->getDOF());
     
-    jointNominalConfig << 0.0, 0.0, 0.36, //base position
-                        0.7071068, 0.0, 0.0, 0.7071068, //base orientation(quaternion)
+    jointNominalConfig << 0.0, 0.0, 0.4, //base position
+                        1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
                         0.03, 0.2, -1.2, //
                         -0.03, 0.2, -1.2,
                         0.03, -0.2, 1.2,
@@ -99,9 +99,7 @@ int main (int argc, char* argv[]) {
 
     Eigen::VectorXd base_pose = Eigen::VectorXd::Zero(6);
     Eigen::VectorXd desired_base_pose = Eigen::VectorXd::Zero(6);
-    desired_base_pose <<   -0.0490382 ,
-                        0.00157048,
-                        0.401518,// + amplitude*sin(2*M_PI*freq*time) ,
+    desired_base_pose <<   0.0, 0.0, 0.4,// + amplitude*sin(2*M_PI*freq*time) ,
                         0,
                         0,
                         0;
@@ -125,9 +123,9 @@ int main (int argc, char* argv[]) {
 
     HOQP* hoqp = new HOQP();
     hoqp->addTask(task1);
-    // hoqp->addTask(task2);
+    hoqp->addTask(task2);
     hoqp->init();
-
+    std::cout << "start " << std::endl;
     const int totalT = 1000000;
     for (int i=0; i<totalT; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6);
@@ -170,10 +168,17 @@ int main (int argc, char* argv[]) {
         Eigen::MatrixXd Qu = Su*QT;
         Eigen::MatrixXd R = qr.matrixQR().template triangularView<Eigen::Upper>();
         Eigen::MatrixXd QuS_inv = moor_penrose_pseudo_inverse(Qu*S.transpose());
-
+        //print thier size
+        std::cout << "Qu : " << Qu.rows() << "x" << Qu.cols() << std::endl;
+        std::cout << "S : " << S.rows() << "x" << S.cols() << std::endl;
+        std::cout << "QuS_inv : " << QuS_inv.rows() << "x" << QuS_inv.cols() << std::endl;
+        std::cout << "M : " << M.rows() << "x" << M.cols() << std::endl;
+        std::cout << "h : " << h.rows() << "x" << h.cols() << std::endl;
+        std::cout << "Qu : " << Qu.rows() << "x" << Qu.cols() << std::endl;
+        std::cout << "QuS_inv : " << QuS_inv.rows() << "x" << QuS_inv.cols() << std::endl;
         hoqp->updateAllTasks();
         hoqp->solveAllTasks();
-        Eigen::VectorXd des_qddot = hoqp->getSolution();
+        Eigen::VectorXd des_qddot = hoqp->getSolution().head(go1->getDOF());
         tau = (QuS_inv)*Qu*(M*des_qddot + h);
         generalizedForce.tail(12) = tau;
         go1->setGeneralizedForce(generalizedForce);

@@ -1,9 +1,9 @@
 SimEnv:
   is_attached: true        # true: for attached, false: for not attached
-  obj_mass: 0.4         # default : 0.5
+  obj_mass: 0.5         # default : 0.5
   wire_length: 0.25     # default : 0.25
   terrain_type: 1       # 0: normal, 1: inclined, 2: heightmap
-  momentum_control: 1   # 0: no-momentum, 1: linear, 2: angular, 3: both
+  momentum_control: 3   # 0: no-momentum, 1: linear, 2: angular, 3: both
   traj_duration: 2      # total duration of trajectory = 2*traj_duration (default:2)
   traj_angle: 90        # total angle of trajectory = 2*traj_angle (default:90)
   hz: 200

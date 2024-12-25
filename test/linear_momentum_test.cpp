@@ -80,11 +80,11 @@ int main (int argc, char* argv[]) {
     std::cout << "save_data : " << save_data << std::endl;
     
     raisim::World world;
-    auto ground = world.addGround(0., "brass", raisim::COLLISION(-1));
+    auto ground = world.addGround(0., "brass");//, raisim::COLLISION(-1));
     raisim::Vec<3> gravity = world.getGravity();
     world.setTimeStep(1/hz);
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-    auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf", "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
+    auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf");//, "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
     // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1_obj.urdf", "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
     
     Eigen::VectorXd jointNominalConfig(robot->getGeneralizedCoordinateDim());
@@ -125,7 +125,7 @@ int main (int argc, char* argv[]) {
                -sin(robot_angle_rad), 0, cos(robot_angle_rad);
         double size_x = 2.0;
         double size_z = 0.05;
-        auto slope = world.addBox(size_x,1,size_z,100,"brass",raisim::COLLISION(-1),raisim::COLLISION(-1));
+        auto slope = world.addBox(size_x,1,size_z,100,"brass");//,raisim::COLLISION(-1),raisim::COLLISION(-1));
         slope->setBodyType(raisim::BodyType::STATIC);
         slope->setPosition(raisim::Vec<3>{0.0,0.0,size_x*sin(slope_angle_rad)/2});
         slope->setOrientation(slope_rot);

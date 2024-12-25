@@ -1,6 +1,5 @@
 #include "raisim/World.hpp"
 #include "raisim/RaisimServer.hpp"
-#include <matplot/matplot.h>
 
 Eigen::MatrixXd moor_penrose_pseudo_inverse(Eigen::MatrixXd A) {
     Eigen::MatrixXd At = A.transpose();

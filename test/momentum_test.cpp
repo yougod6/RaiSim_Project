@@ -139,42 +139,12 @@ int main (int argc, char* argv[]) {
     std::cout << "# traj_angle : " << traj_angle << "\t trajectory total angle : " << 2*traj_angle << std::endl;
     std::cout << "# hz : " << hz << std::endl;
 
-
-    // bool is_attached = true;
-    // int terrain_type = 0; // 0 : normal, 1 : inclined, 2 : heightmap
-    // int momentum_control = 3; // 0 : normal, 1 : linear, 2 : angular, 3 : both
-    // double traj_duration = 2.0; // trajectory cycle = 2*traj_duration
-    // double traj_angle = 90.0; // trajectory total angle = 2*traj_angle
-    // double hz = 100;
-    // bool save_data = false;
-    // for(int i=1; i<argc; i++){
-    //     if(i==1) is_attached = std::stoi(argv[i]);
-    //     if(i==2) {
-    //         if(terrain_type<0 || terrain_type>2){
-    //             std::cout << "terrain_type should be 0, 1, or 2" << std::endl;
-    //             return 0;
-    //         }
-    //         terrain_type = std::stoi(argv[i]);
-    //     }
-    //     if(i==3){
-    //         if(momentum_control<0 || momentum_control>3){
-    //             std::cout << "momentum_control should be 0, 1, 2, or 3" << std::endl;
-    //             return 0;
-    //         }
-    //         momentum_control = std::stoi(argv[i]);
-    //     } 
-    //     if(i==4) traj_duration = std::stod(argv[i]);
-    //     if(i==5) traj_angle = std::stod(argv[i]);
-    //     if(i==6) hz = std::stod(argv[i]);
-    //     if(i==7) save_data = std::stod(argv[i]);
-    // }
-
     raisim::World world;
-    auto ground = world.addGround(0., "brass", raisim::COLLISION(-1));
+    auto ground = world.addGround(0., "brass");//, raisim::COLLISION(-1));
     raisim::Vec<3> gravity = world.getGravity();
     world.setTimeStep(1/hz);
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-    auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf", "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
+    auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf");//, "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
     
     Eigen::VectorXd jointNominalConfig(robot->getGeneralizedCoordinateDim());
     jointNominalConfig << 0.0, 0.0, 0.43, //base position
@@ -207,13 +177,13 @@ int main (int argc, char* argv[]) {
         Eigen::Matrix3d robot_rot = Eigen::Matrix3d::Zero();
         slope_rot << cos(slope_angle_rad), 0, sin(slope_angle_rad),
                             0, 1, 0,
-               -sin(slope_angle_rad), 0, cos(slope_angle_rad);
+                    -sin(slope_angle_rad), 0, cos(slope_angle_rad);
         robot_rot << cos(robot_angle_rad), 0, sin(robot_angle_rad),
                             0, 1, 0,
-               -sin(robot_angle_rad), 0, cos(robot_angle_rad);
+                    -sin(robot_angle_rad), 0, cos(robot_angle_rad);
         double size_x = 2.0;
         double size_z = 0.05;
-        auto slope = world.addBox(size_x,1,size_z,100,"brass",raisim::COLLISION(-1),raisim::COLLISION(-1));
+        auto slope = world.addBox(size_x,1,size_z,100,"brass");//,raisim::COLLISION(-1),raisim::COLLISION(-1));
         slope->setBodyType(raisim::BodyType::STATIC);
         slope->setPosition(raisim::Vec<3>{0.0,0.0,abs(size_x*sin(slope_angle_rad)/2)});
         slope->setOrientation(slope_rot);
@@ -276,7 +246,6 @@ int main (int argc, char* argv[]) {
 
         desired_x << 0.65, 0.0, offset+0.6,
                     1.0, 0.0, 0.0, 0.0;
-        // desired_x.tail(4) = slope_quat.coeffs();  
         base_desired_x <<   -0.0490382 ,
                     0.00157048,
                     offset+0.43-0.02,// + amplitude*sin(2*M_PI*freq*time) ,
@@ -284,8 +253,6 @@ int main (int argc, char* argv[]) {
                     0,
                     0;
         base_desired_x.tail(3) = euler;
-        // std::cout << "euler : " << euler.transpose() << std::endl;
-        // std::cout << offset+0.43 << std::endl;
 
 
         jointNominalConfig << 0.0, 0.0, 0.43+offset, //base position
@@ -297,15 +264,6 @@ int main (int argc, char* argv[]) {
                           0.0, 0.6, -1.5,
                           0, 2.57, -1.5,  -1.0,  0. , 0.; // arm joints
 
-        // desired_x << 0.65, 0.0, offset+0.6,
-        //             1.0, 0.0, 0.0, 0.0;
-
-        // base_desired_x <<   -0.0490382 ,
-        //                     0.00157048,
-        //                     offset+0.401518,// + amplitude*sin(2*M_PI*freq*time) ,
-        //                     0,
-        //                     0,
-        //                     0;
     }
 
     Eigen::Vector3d rate_weight = 50*Eigen::Vector3d::Ones(3);
@@ -386,24 +344,7 @@ int main (int argc, char* argv[]) {
     robot->getCollisionBody("RR_foot/0").setMaterial("steel");
     world.setMaterialPairProp("steel", "brass", 1., 0., 0.1, 1, 1.);
     auto proper = world.getMaterialPairProperties(robot->getCollisionBody("RR_foot/0").getMaterial(), "brass");
-    /**
-     * print friction properties
-     * friction – the dynamic coefficient of friction
-        restitution – the coefficient of restitution
-        resThreshold – the minimum impact velocity to make the object bounce
-        staticFriction – the static coefficient of friction
-        staticFrictionThresholdVelocity – if the relative velocity of two points is bigger than this value, then the dynamic
-          double c_f = 0.8; // coefficient of friction
-  double c_r = 0.0; // coefficient of restitution
-  double r_th = 0.01; // restitution threshold
-  double c_static_f = 0.8;
-  double v_static_speed = 1., v_static_speed_inv = 1.0;
-     */
-    // std::cout << "friction : " << proper.c_f << std::endl;
-    // std::cout << "restitution : " << proper.c_r << std::endl;
-    // std::cout << "resThreshold : " << proper.r_th << std::endl;
-    // std::cout << "staticFriction : " << proper.c_static_f << std::endl;
-    // std::cout << "staticFrictionThresholdVelocity : " << proper.v_static_speed << std::endl;
+
     auto unknown_obj = world.addBox(0.1, 0.4, 0.1, obj_mass,"steel",raisim::COLLISION(2),raisim::COLLISION(2));
     auto CoM_Sphere = world.addSphere(0.05, 0.01,"steel",raisim::COLLISION(111),raisim::COLLISION(111));
     Eigen::Vector3d r_obj_com;
@@ -411,12 +352,6 @@ int main (int argc, char* argv[]) {
         raisim::Vec<3> ee_posi_tmp;
         robot->getFramePosition("joint6", ee_posi_tmp);
         ee_posi_tmp = ee_posi_tmp + raisim::Vec<3>{0,0,-wire_length};
-        // std::cout << "Body Frame Inertia of object : " << unknown_obj->getInertiaMatrix_B().transpose() << std::endl;
-        // Eigen::Matrix3d obj_inertia = Eigen::Matrix3d::Zero();
-        // obj_inertia << (0.0113542), 2*(0.001875), 0, // (1/12)*0.5*(0.5^2 + 0.15^2)
-        //                2*(0.001875), (0.001875), 0, // (1/12)*0.5*(0.15^2 + 0.15^2)
-        //                0, 0, (0.0113542); // (1/12)*0.5*(0.5^2 + 0.15^2)
-        // unknown_obj->setInertia(obj_inertia);
         unknown_obj->setBodyType(raisim::BodyType::DYNAMIC);
         unknown_obj->setAppearance("1,1,1,0.5");
         // unknown_obj->setAppearance("brown");
@@ -488,10 +423,7 @@ int main (int argc, char* argv[]) {
         hoqp->solveAllTasks();
         solution_vector = hoqp->getSolution();
         tau = solution_vector.tail(18);
-        // std::cout << "leg tau : " << tau.head(12).transpose() << std::endl;
-        // std::cout << "main tau : " << tau.tail(6).transpose() << std::endl;
-        std::cout << "desired base position : " << base_desired_x.head(3).transpose() << std::endl;
-        std::cout << "desired base euler : " << base_desired_x.tail(3).transpose() << std::endl;
+
         generalizedForce.tail(18) = tau;
         robot->setGeneralizedForce(generalizedForce);
         // // 10 seconds later, exert external force on the robot

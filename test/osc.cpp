@@ -1,6 +1,5 @@
 #include "raisim/World.hpp"
 #include "raisim/RaisimServer.hpp"
-#include <matplot/matplot.h>
 
 Eigen::MatrixXd moor_penrose_pseudo_inverse(Eigen::MatrixXd A) {
     return A.transpose()*((A*A.transpose()).inverse());
@@ -229,10 +228,6 @@ int main (int argc, char* argv[]) {
     Eigen::VectorXd tau_base = Eigen::VectorXd::Zero(12);
     Eigen::MatrixXd N1 = Eigen::MatrixXd::Zero(12,12);
     
-    namespace plt = matplot;
-    std::vector<double> time = plt::linspace(0, totalT);
-    std::vector<double> desired_base_x(totalT);
-    std::vector<double> base_x(totalT);
     // 소수점 첫째자리까지 출력
     std::cout.precision(1);
 
@@ -336,8 +331,6 @@ int main (int argc, char* argv[]) {
         J_B_prev = J_B;
         J_c_prev = J_c_;
 
-        desired_base_x[i] = desired_base_pose(0);
-        base_x[i] = base_position.e().head(3)(0);
         tau.setZero();
         
         tau += tau_base;
@@ -347,10 +340,6 @@ int main (int argc, char* argv[]) {
         server.integrateWorldThreadSafe();
     }
     server.killServer();
-    auto fig = plt::figure();   
-    auto ax = fig->current_axes();
-    plt::plot(ax,desired_base_x,"--r",base_x,"-b"); //plot the x,y
-    // plt::plot(base_x,"-b"); //plot the x,y
-    plt::show();
+    
     return 0;
 }

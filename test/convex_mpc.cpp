@@ -20,7 +20,7 @@ Eigen::VectorXd make_base_vel_trajectory(const double time){
 int main (int argc, char* argv[]) {
     raisim::World world;
     auto ground = world.addGround();
-    const double hz = 200;
+    const double hz = 2000;
     world.setTimeStep(1/hz); //1kHz
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
     // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\go1\\go1.urdf");
@@ -34,18 +34,18 @@ int main (int argc, char* argv[]) {
    
     Eigen::VectorXd jointNominalConfig(robot->getGeneralizedCoordinateDim());
     
-    jointNominalConfig << 0.0, 0.0, 0.45, //base position
-                          1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
-                          0.0, 0.6, -1.3, 
-                          0.0, 0.6, -1.3, 
-                          0.0, 0.6, -1.3,
-                          0.0, 0.6, -1.3;
-    // jointNominalConfig << 0.0, 0.0, 0.42, //base position
-    //                     1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
-    //                     0.0, 0.6, -1.3, //
-    //                     0.0, 0.6, -1.3,
-    //                     0.0, 0.6, -1.3,
-    //                     0.0, 0.6, -1.3;
+    // jointNominalConfig << 0.0, 0.0, 0.45, //base position
+    //                       1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
+    //                       0.0, 0.6, -1.3, 
+    //                       0.0, 0.6, -1.3, 
+    //                       0.0, 0.6, -1.3,
+    //                       0.0, 0.6, -1.3;
+    jointNominalConfig << 0.0, 0.0, 0.42, //base position
+                        1.0, 0.0, 0.0, 0.0, //base orientation(quaternion)
+                        0.0, 0.6, -1.3, //
+                        0.0, 0.6, -1.3,
+                        0.0, 0.6, -1.3,
+                        0.0, 0.6, -1.3;
 
     robot->setGeneralizedCoordinate(jointNominalConfig);
 

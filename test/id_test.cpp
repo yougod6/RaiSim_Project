@@ -1,6 +1,5 @@
 #include "raisim/World.hpp"
 #include "raisim/RaisimServer.hpp"
-#include <matplot/matplot.h>
 
 
 
@@ -159,13 +158,6 @@ int main (int argc, char* argv[]) {
     Eigen::VectorXd tau_contact = Eigen::VectorXd::Zero(12);
     Eigen::VectorXd tau_base = Eigen::VectorXd::Zero(12);
     Eigen::MatrixXd N1 = Eigen::MatrixXd::Zero(12,12);
-    namespace plt = matplot;
-    std::vector<double> time = plt::linspace(0, totalT);
-    std::vector<double> desired_base_x(totalT);
-    std::vector<double> base_x(totalT);
-
-    // auto graph = server.addTimeSeriesGraph("desired_base_x", {"desired_base_x"}, "time", "desired_base_x");
-
 
     for (int i=0; i<totalT; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6);
@@ -240,8 +232,6 @@ int main (int argc, char* argv[]) {
         
         // tau = (Su*Q^T*S^T)^(-1)*Su*Q^T*[Mqddot + h]
         // Eigen::VectorXd tau = (SQS)*Su*Q.transpose()*(M*qddot + h);
-        desired_base_x[i] = desired_base_position(0);
-        base_x[i] = base_position.e().head(3)(0);
         tau_pd = (jointPgain*(jointNominalConfig.tail(12) - go1->getGeneralizedCoordinate().e().tail(12)) - jointDgain*(go1->getGeneralizedVelocity().e().tail(12)));
         tau.setZero();
         tau += tau_pd;
@@ -256,10 +246,5 @@ int main (int argc, char* argv[]) {
         go1->setGeneralizedForce(generalizedForce);
         server.integrateWorldThreadSafe();
     }
-    auto fig = plt::figure();   
-    auto ax = fig->current_axes();
-    plt::plot(ax,desired_base_x,"--r",base_x,"-b"); //plot the x,y
-    // plt::plot(base_x,"-b"); //plot the x,y
-    plt::show();
     return 0;
 }

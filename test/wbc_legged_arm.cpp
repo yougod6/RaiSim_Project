@@ -12,17 +12,6 @@
 #include "HOQP_Slack.hpp"
 #include "Utils.hpp"
 
-// auto contacts  = robot->getContacts();
-// for(auto contact : contacts){
-//     auto idx = contact.getlocalBodyIndex();
-//     std::cout << "Contact Body Index : " << idx << std::endl;
-//     auto contact_posi = contact.getPosition();
-//     std::cout << "Contact Position : " << contact_posi.e().transpose() << std::endl;
-//     auto force = contact.getImpulse();
-//     force = force/world.getTimeStep();
-//     std::cout << "Contact Force : " << force.e().transpose() << std::endl;
-// }
-
 void make_ee_trajectory(const double time, Eigen::VectorXd& desired_x,double offset=0.0){
     const double amplitude = 0.2; //0.15
     const double freq = 0.5;
@@ -49,10 +38,9 @@ void get_contact_feet(raisim::ArticulatedSystem* robot, std::vector<bool>& conta
 
 
 int main (int argc, char* argv[]) {
-
     bool is_attached = true;
     bool is_inclined = true;
-    double hz = 100;
+    double hz = 1000;
     for(int i=1; i<argc; i++){
         if(i==1) is_attached = std::stoi(argv[i]);
         if(i==2) is_inclined = std::stoi(argv[i]);
@@ -63,12 +51,12 @@ int main (int argc, char* argv[]) {
     std::cout << "hz : " << hz << std::endl;
 
     raisim::World world;
-    auto ground = world.addGround(0., "default", raisim::COLLISION(-1));
+    auto ground = world.addGround(0., "default");//, raisim::COLLISION(-1));
     
     raisim::Vec<3> gravity = world.getGravity();
     world.setTimeStep(1/hz);
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
-    auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf", "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
+    auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1.urdf");//, "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
     // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\z1\\aliengo_z1_obj.urdf", "",{}, raisim::COLLISION(-1), raisim::COLLISION(-1));
     
     Eigen::VectorXd jointNominalConfig(robot->getGeneralizedCoordinateDim());
@@ -204,7 +192,7 @@ int main (int argc, char* argv[]) {
         robot->setGeneralizedForce(generalizedForce);
         // // 10 seconds later, exert external force on the robot
         if(i>1000 && i<4000){
-            make_ee_trajectory(world.getWorldTime(), desired_x,offset);
+            // make_ee_trajectory(world.getWorldTime(), desired_x,offset);
             task3->updateDesiredEEPose(desired_x);
             server.lockVisualizationServerMutex();
             if (ee_traj_line->points.size() > 500){

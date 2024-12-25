@@ -1,6 +1,5 @@
 #include "raisim/World.hpp"
 #include "raisim/RaisimServer.hpp"
-#include <matplot/matplot.h>
 
 Eigen::MatrixXd moor_penrose_pseudo_inverse(Eigen::MatrixXd A) {
     return A.transpose()*((A*A.transpose()).inverse());
@@ -146,21 +145,6 @@ int main (int argc, char* argv[]) {
     Eigen::VectorXd tau_base = Eigen::VectorXd::Zero(12);
     Eigen::MatrixXd N1 = Eigen::MatrixXd::Zero(18,18);
     
-    namespace plt = matplot;
-    std::vector<double> time = plt::linspace(0, totalT);
-    std::vector<double> desired_base_x(totalT);
-    std::vector<double> base_x(totalT);
-    std::vector<double> desired_base_y(totalT);
-    std::vector<double> base_y(totalT);
-    std::vector<double> desired_base_z(totalT);
-    std::vector<double> base_z(totalT);
-    std::vector<double> desired_base_rx(totalT);
-    std::vector<double> base_rx(totalT);
-    std::vector<double> desired_base_ry(totalT);
-    std::vector<double> base_ry(totalT);
-    std::vector<double> desired_base_rz(totalT);
-    std::vector<double> base_rz(totalT);
-
     for (int i=0; i<totalT; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6);
 
@@ -221,19 +205,6 @@ int main (int argc, char* argv[]) {
         tau_total = (SQS)*Su*Q.transpose()*(M*des_qddot + h);
         
         J_c_prev = J_c_;
-        desired_base_x[i] = desired_base_pose(0);
-        desired_base_y[i] = desired_base_pose(1);
-        desired_base_z[i] = desired_base_pose(2);
-        base_x[i] = base_pose(0);
-        base_y[i] = base_pose(1);
-        base_z[i] = base_pose(2);
-
-        desired_base_rx[i] = desired_base_pose(3);
-        desired_base_ry[i] = desired_base_pose(4);
-        desired_base_rz[i] = desired_base_pose(5);
-        base_rx[i] = base_pose(3);
-        base_ry[i] = base_pose(4);
-        base_rz[i] = base_pose(5);
         Eigen::VectorXd acc = go1->getGeneralizedAcceleration().e();
         Eigen::VectorXd toq = go1->getGeneralizedForce().e();
         std::cout << "acc size" << acc.size() << std::endl;
@@ -246,19 +217,5 @@ int main (int argc, char* argv[]) {
         go1->setGeneralizedForce(generalizedForce);
         server.integrateWorldThreadSafe();
     }
-    auto fig = plt::figure();   
-    auto ax = fig->current_axes();
-    plt::plot(ax,desired_base_x,"--r",desired_base_y,"--g",desired_base_z,"--b",base_x,"-r",base_y,"-g",base_z,"-b"); //plot the x,y
-    plt::legend({"desired-x","desired-y","desired-z","x","y","z"});
-    fig->save("../images/base_position.png");
-    
-    auto fig2 = plt::figure();   
-    auto ax2 = fig2->current_axes();
-    plt::plot(ax2,desired_base_rx,"--r",desired_base_ry,"--g",desired_base_rz,"--b",base_rx,"-r",base_ry,"-g",base_rz,"-b"); //plot the x,y
-    plt::legend({"desired-rx","desired-ry","desired-rz","rx","ry","rz"});
-    fig2->save("../images/base_orientation.png");
-
-    // plt::plot(base_x,"-b"); //plot the x,y
-    // plt::show()
     return 0;
 }

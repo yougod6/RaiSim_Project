@@ -30,5 +30,7 @@ This project uses the following external libraries:
 </p>
 
 ### HWBC
-<img src="assets/configuration.png" alt="Convex MPC Aliengo" width="45%">
-<img src="assets/convexMPC_aliengo.gif" alt="Convex MPC Aliengo" width="45%">
+<p align="center">
+  <img src="assets/configuration.png" alt="HWBC Configuration" width="80%">
+  <img src="assets/HWBC.gif" alt="HWBC Demonstration" width="80%">
+</p>

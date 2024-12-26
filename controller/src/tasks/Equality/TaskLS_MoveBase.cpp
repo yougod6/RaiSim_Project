@@ -2,17 +2,13 @@
 #define _USE_MATH_DEFINES 
 
 
-TaskLS_MoveBase::TaskLS_MoveBase(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, Eigen::VectorXd desired_x, const double kp, const double kd)
-: TaskLS(task_dim, var_dim), world_(world), robot_(robot), desired_x_(desired_x) ,  kp_(kp), kd_(kd)
+TaskLS_MoveBase::TaskLS_MoveBase(RobotState* robot_state, const int task_dim, const int var_dim, Eigen::VectorXd desired_x, const double kp, const double kd)
+: TaskLS(task_dim, var_dim), robot_state_(robot_state), desired_x_(desired_x) ,  kp_(kp), kd_(kd)
 {
     task_name_ = "Move Base";
-    dof_ = robot->getDOF();
-    gravity_ = world_->getGravity();
+    dof_ = robot_state_->getDOF();
 
-    J_B_position = Eigen::MatrixXd::Zero(3, dof_);
-    J_B_rotation = Eigen::MatrixXd::Zero(3, dof_);
     J_B_ = Eigen::MatrixXd::Zero(6, dof_);
-    // J_B_.block(0,0,6,6) = Eigen::MatrixXd::Identity(6,6);
 
     dJ_B_ = Eigen::MatrixXd::Zero(6, dof_);
 
@@ -28,27 +24,10 @@ TaskLS_MoveBase::TaskLS_MoveBase(raisim::World* world, raisim::ArticulatedSystem
 
 TaskLS_MoveBase::~TaskLS_MoveBase(){}
 
-void TaskLS_MoveBase::update_dJ_B(const double dt)
-{
-    Eigen::MatrixXd J_B_tmp = J_B_;
-    
-    update_J_B();
-    dJ_B_ = (J_B_ - J_B_tmp)/dt;
-}
-
-void TaskLS_MoveBase::update_J_B()
-{
-    robot_->getDenseFrameJacobian("floating_base", J_B_position);
-    robot_->getDenseFrameRotationalJacobian("floating_base", J_B_rotation);
-    J_B_.block(0, 0, 3, dof_) = J_B_position;
-    J_B_.block(3, 0, 3, dof_) = J_B_rotation;
-}
-
 void TaskLS_MoveBase::updateMatrix()
 {
-    // std::cout << "Move Base Matrix PreUpdated" << std::endl;
-    update_dJ_B(world_->getTimeStep());
-    
+    J_B_ = robot_state_->getBaseJacobian();
+
     // z position and orientation
     if(task_dim_==4){
         A_.block(0,0,task_dim_,dof_) = J_B_.block(2,0,4,dof_);  
@@ -56,56 +35,31 @@ void TaskLS_MoveBase::updateMatrix()
     else{
         A_.block(0, 0, task_dim_, dof_) = J_B_;
     }
-    // std::cout << "Move Base Matrix Updated" << std::endl;
 
 }
 
 void TaskLS_MoveBase::updateVector()
 {
-    // std::cout << "Move Base Vector PreUpdated" << std::endl;
-   
-    double time = world_->getWorldTime();
-    // makeBaseTrajectory(world_->getWorldTime());
-    // std::cout << "Base Trajectory Made" << std::endl;
+    dJ_B_ = robot_state_->getBaseJacobianRate();
     updateDesiredBaseAcceleration();
     if(task_dim_==4){
-        b_ = desired_xddot_.tail(4) - dJ_B_.block(2,0,4,dof_)*robot_->getGeneralizedVelocity().e();
+        b_ = desired_xddot_.tail(4) - dJ_B_.block(2,0,4,dof_)*robot_state_->getGeneralizedVelocities();
     }
     else{
-        b_ = desired_xddot_ - dJ_B_*robot_->getGeneralizedVelocity().e();
+        b_ = desired_xddot_ - dJ_B_*robot_state_->getGeneralizedVelocities();
     }
-    // std::cout << "Move Base Vector Updated" << std::endl;
 }
 
 void TaskLS_MoveBase::updateDesiredBasePose(Eigen::VectorXd desired_x){
     desired_x_ = desired_x;
 }
-// void TaskLS_MoveBase::makeBaseTrajectory(double time){
-//     // Defines circular trajectory parameters in xz plane
-//     const double amplitude = 0.05; //0.15
-//     const double freq = 0.2;
-
-// //    desired_x_ << -0.00250028 ,
-// //                     0.000455424+ amplitude*sin(2*M_PI*freq*time) ,
-// //                     0.34,
-// //                     0,0,0;
-//     desired_x_ <<   -0.0490382 ,
-//                     0.00157048,
-//                     0.401518,// + amplitude*sin(2*M_PI*freq*time) ,
-//                     0,
-//                     0,
-//                     0;
-// }
 
 void TaskLS_MoveBase::updateDesiredBaseAcceleration(){
     Eigen::VectorXd q_B = Eigen::VectorXd::Zero(6);
-    raisim::Vec<3> base_position;
-    raisim::Vec<4> base_quat;
-    robot_->getBasePosition(base_position);
-    robot_->getBaseOrientation(base_quat);
-    Eigen::Quaterniond base_quat_eigen(base_quat[0], base_quat[1], base_quat[2], base_quat[3]);
-    Eigen::Vector3d base_euler = Utils::quat_to_euler(base_quat_eigen);
-    q_B.head(3) = base_position.e();
+    base_position_ = robot_state_->getBasePosition();
+    base_quaternion_ = robot_state_->getBaseQuaternion();
+    Eigen::Vector3d base_euler = Utils::quat_to_euler(base_quaternion_);
+    q_B.head(3) = base_position_;
     q_B.tail(3) = base_euler;
-    desired_xddot_ = kp_*(desired_x_ - q_B) - kd_*(robot_->getGeneralizedVelocity().e().head(6)); 
+    desired_xddot_ = kp_*(desired_x_ - q_B) - kd_*(robot_state_->getGeneralizedVelocities().head(6)); 
 }

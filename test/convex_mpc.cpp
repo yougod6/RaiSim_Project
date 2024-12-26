@@ -12,7 +12,7 @@ Eigen::VectorXd make_base_vel_trajectory(const double time){
    
     desired_v_B_ << 0.0,
                     0.0,
-                    -amplitude*sin(2*M_PI*freq*time);
+                    0.0;// -amplitude*sin(2*M_PI*freq*time);
 
     return desired_v_B_;
 }
@@ -20,7 +20,7 @@ Eigen::VectorXd make_base_vel_trajectory(const double time){
 int main (int argc, char* argv[]) {
     raisim::World world;
     auto ground = world.addGround();
-    const double hz = 2000;
+    const double hz = 200;
     world.setTimeStep(1/hz); //1kHz
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
     // auto robot = world.addArticulatedSystem(binaryPath.getDirectory() + "\\rsc\\go1\\go1.urdf");
@@ -208,12 +208,14 @@ int main (int argc, char* argv[]) {
         C = mpc_solver.get_constraint_matrix();
         lb = mpc_solver.get_lb();
         ub = mpc_solver.get_ub();
-
+        std::cout << "MPC QP Conversion done" << std::endl;
         // QP Solver
         solver->init(H, g, C, lb, ub, false);
+        std::cout << "solver init done" << std::endl;
         solver->solve();
+        std::cout << "solver solve done" << std::endl;
         u = solver->getSolution();
-        
+        std::cout << "QP Solver done" << std::endl;
 
         for(int i=0; i<4; i++){
             foot_grf.block(0,i,3,1) = u.segment(i*3,3);

@@ -6,11 +6,9 @@ class TaskLS_StationaryEE: public TaskLS
 {
 
     public:
-        TaskLS_StationaryEE(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, Eigen::VectorXd desired_x ,const double kp=100, const double kd=(2*sqrt(100)));
+        TaskLS_StationaryEE(RobotState* robot_state, const int task_dim, const int var_dim, Eigen::VectorXd desired_x ,const double kp=100, const double kd=(2*sqrt(100)));
         ~TaskLS_StationaryEE();
 
-        void update_dJ_EE(const double dt=0.001);
-        void update_J_EE();
         void updateVector()override;
         void updateMatrix()override;
         // void makeEETrajectory(double time);
@@ -18,13 +16,16 @@ class TaskLS_StationaryEE: public TaskLS
         void updateDesiredBaseAcceleration();
     
     private:
-        raisim::World* world_;
-        raisim::ArticulatedSystem* robot_;
+        RobotState* robot_state_;
         int dof_; 
-        raisim::Vec<3> gravity_;
         double kp_;
         double kd_;
         
+        Eigen::Vector3d ee_position_;
+        Eigen::Quaterniond ee_quaternion_;
+        Eigen::Vector3d ee_euler_;
+        Eigen::Vector3d ee_linear_velocity_;
+        Eigen::Vector3d ee_angular_velocity_;
         Eigen::MatrixXd J_EE_position;
         Eigen::MatrixXd J_EE_rotation;
         Eigen::MatrixXd J_EE_;

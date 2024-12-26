@@ -1,21 +1,17 @@
 #include "TaskLS_FrictionCone.hpp"
 
-TaskLS_FrictionCone::TaskLS_FrictionCone(raisim::World* world, raisim::ArticulatedSystem* robot, int task_dim, int var_dim, double mu)
-: TaskLS(task_dim,var_dim), world_(world), robot_(robot) ,mu_(mu)
+TaskLS_FrictionCone::TaskLS_FrictionCone(RobotState* robot_state, int task_dim, int var_dim, double mu)
+: TaskLS(task_dim,var_dim), robot_state_(robot_state), mu_(mu)
 {
     task_name_ = "Friction Cone Constraint";
     lambda_max_ = 1000.;
     lambda_min_ = 0.;
-    dof_ = robot_->getDOF();
+    dof_ = robot_state_->getDOF();
     S_ = Eigen::MatrixXd::Zero(dof_-6, dof_);
     S_.block(0,6,dof_-6,dof_-6) = Eigen::MatrixXd::Identity(dof_-6,dof_-6);
 
     M_ = Eigen::MatrixXd::Zero(dof_, dof_);
     h_ = Eigen::VectorXd::Zero(dof_);
-    J_c_FR_ = Eigen::MatrixXd::Zero(3, dof_);
-    J_c_FL_ = Eigen::MatrixXd::Zero(3, dof_);
-    J_c_RR_ = Eigen::MatrixXd::Zero(3, dof_);
-    J_c_RL_ = Eigen::MatrixXd::Zero(3, dof_);
     J_c_ = Eigen::MatrixXd::Zero(12, dof_);
 
     F_block_ = Eigen::MatrixXd::Zero(6, 3);
@@ -36,17 +32,9 @@ TaskLS_FrictionCone::TaskLS_FrictionCone(raisim::World* world, raisim::Articulat
 TaskLS_FrictionCone::~TaskLS_FrictionCone(){}
 
 void TaskLS_FrictionCone::updateMatrix(){
-    M_ = robot_->getMassMatrix().e();
-    gravity_ = world_->getGravity();
-    h_ = robot_->getNonlinearities(gravity_).e();
-    robot_->getDenseFrameJacobian("FR_foot_fixed", J_c_FR_);
-    robot_->getDenseFrameJacobian("FL_foot_fixed", J_c_FL_);
-    robot_->getDenseFrameJacobian("RR_foot_fixed", J_c_RR_);
-    robot_->getDenseFrameJacobian("RL_foot_fixed", J_c_RL_);
-    J_c_.block(0, 0, 3, dof_) = J_c_FR_;
-    J_c_.block(3, 0, 3, dof_) = J_c_FL_;
-    J_c_.block(6, 0, 3, dof_) = J_c_RR_;
-    J_c_.block(9, 0, 3, dof_) = J_c_RL_;
+    M_ = robot_state_->getMassMatrix();
+    h_ = robot_state_->getNonlinearVector();
+    J_c_ = robot_state_->getContactJacobian();
 
     Eigen::HouseholderQR<Eigen::MatrixXd> qr(J_c_.transpose());
     Q_ = qr.householderQ();
@@ -58,8 +46,8 @@ void TaskLS_FrictionCone::updateMatrix(){
     E.block(0, dof_, dof_, dof_-6) = -S_.transpose();
     A_c_ = R_.inverse()*Qc_.transpose()*E;
     b_c_ = R_.inverse()*Qc_.transpose()*h_;
-    Eigen::VectorXd u_dot = robot_->getGeneralizedAcceleration().e();  
-    Eigen::VectorXd tau = robot_->getGeneralizedForce().e().tail(dof_-6);  
+    Eigen::VectorXd u_dot = robot_state_->getGeneralizedAccelerations();
+    Eigen::VectorXd tau = robot_state_->getGeneralizedForces().tail(dof_-6);  
     Eigen::VectorXd x = Eigen::VectorXd::Zero(dof_+(dof_-6));
     x.head(dof_) = u_dot;
     x.tail(dof_-6) = tau;

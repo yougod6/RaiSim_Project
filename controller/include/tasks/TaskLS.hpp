@@ -2,7 +2,7 @@
 #include<Eigen/Sparse>
 #include<Eigen/Dense>
 #include "raisim/World.hpp"
-
+#include "RobotState.hpp"
 class TaskLS
 {
 

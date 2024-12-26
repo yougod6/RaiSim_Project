@@ -5,7 +5,7 @@
 class TaskLS_AngularMomentum: public TaskLS
 {
     public:
-        TaskLS_AngularMomentum(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim, Eigen::Vector3d weight);
+        TaskLS_AngularMomentum(RobotState* robot_state, const int task_dim, const int var_dim, Eigen::Vector3d weight);
         ~TaskLS_AngularMomentum();
 
         void updateVector()override;
@@ -14,13 +14,13 @@ class TaskLS_AngularMomentum: public TaskLS
         void QR_decomposition();
 
     private:
-        raisim::World* world_;
-        raisim::ArticulatedSystem* robot_;
+        RobotState* robot_state_;
         int dof_;
+        int actuated_dof_;
         int contact_dim_;
-        raisim::Vec<3> gravity_;
         Eigen::MatrixXd M_;
         Eigen::VectorXd h_;
+        Eigen::Vector3d g_;
 
         Eigen::MatrixXd J_c_FR_;
         Eigen::MatrixXd J_c_FL_;
@@ -34,6 +34,7 @@ class TaskLS_AngularMomentum: public TaskLS
         Eigen::VectorXd lambda_; // contact forces (stacked)
         Eigen::MatrixXd A_tmp_;
 
+        std::vector<Eigen::Vector3d> contact_points_;
         Eigen::Vector3d r_c_FR_;
         Eigen::Vector3d r_c_FL_;
         Eigen::Vector3d r_c_RR_;

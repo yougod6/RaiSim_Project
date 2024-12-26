@@ -5,18 +5,16 @@
 class TaskLS_MinMotion: public TaskLS
 {
     public:
-        TaskLS_MinMotion(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim=6, const int var_dim=30, const double kp=100, const double kd=(2*sqrt(100)));
+        TaskLS_MinMotion(RobotState* robot_state, const int task_dim=6, const int var_dim=30, const double kp=100, const double kd=(2*sqrt(100)));
         ~TaskLS_MinMotion();
-
         void updateVector()override;
         void updateMatrix()override;
 
     private:
-        raisim::World* world_;
-        raisim::ArticulatedSystem* robot_;
+        RobotState* robot_state_;
         int dof_; 
         int actuated_dim_;
-        raisim::Vec<3> gravity_;
+    
         double kp_;
         double kd_;
         

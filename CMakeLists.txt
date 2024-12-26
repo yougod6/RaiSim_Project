@@ -23,6 +23,7 @@ include_directories(controller/include/tasks)
 include_directories(controller/include/tasks/Equality)
 include_directories(controller/include/tasks/Inequality)
 include_directories(utils)
+include_directories(robot/include)
 
 # 빌드 결과물 디렉토리 설정
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)   # 라이브러리 위치
@@ -36,6 +37,16 @@ target_include_directories(Utils_lib PUBLIC
     utils
 )
 target_link_libraries(Utils_lib PUBLIC Eigen3::Eigen)
+
+# Add RobotStateRaisim library
+add_library(RobotStateRaisim_lib
+    robot/src/RobotState.cpp
+    robot/src/RobotStateRaisim.cpp
+)
+target_include_directories(RobotStateRaisim_lib PUBLIC
+    robot/include
+)
+target_link_libraries(RobotStateRaisim_lib PUBLIC raisim::raisim Eigen3::Eigen)
 
 # Add OsqpSolver library
 add_library(OsqpEigenSolver_lib
@@ -67,7 +78,7 @@ target_include_directories(TaskLS_lib PUBLIC
     controller/include/tasks/Equality
     controller/include/tasks/Inequality
 )
-target_link_libraries(TaskLS_lib PUBLIC raisim::raisim Eigen3::Eigen)
+target_link_libraries(TaskLS_lib PUBLIC raisim::raisim Eigen3::Eigen RobotStateRaisim_lib)
 
 # Add HOQP library
 add_library(HOQP_lib
@@ -88,54 +99,35 @@ target_include_directories(ConvexMPC_lib PUBLIC
 )
 target_link_libraries(ConvexMPC_lib PUBLIC Utils_lib OsqpEigenSolver_lib)
 
-# Function to simplify adding executables
-function(add_raisim_executable target sources)
-    add_executable(${target} ${sources})
-    target_link_libraries(${target} PUBLIC raisim::raisim)
-    target_link_libraries(${target} PUBLIC yaml-cpp::yaml-cpp)
-    if(NOT WIN32)
-        target_link_libraries(${target} PUBLIC pthread)
-    else()
-        target_link_libraries(${target} PUBLIC Ws2_32 Winmm)
-    endif()
-    target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-endfunction()
 
-# Function to add executables with custom libraries
-function(add_custom_executable target sources libs)
-    add_raisim_executable(${target} "${sources}")
-    foreach(lib IN LISTS libs)
-        target_link_libraries(${target} PRIVATE ${lib})
-    endforeach()
-endfunction()
 
 # Add executables
-add_executable(test_joint_impedance test/joint_impedance.cpp)
-target_link_libraries(test_joint_impedance PRIVATE raisim::raisim Utils_lib)
+# add_executable(test_joint_impedance test/joint_impedance.cpp)
+# target_link_libraries(test_joint_impedance PRIVATE raisim::raisim Utils_lib)
 
-add_executable(test_id test/id_test.cpp)
-target_link_libraries(test_id PRIVATE raisim::raisim Utils_lib)
+# add_executable(test_id test/id_test.cpp)
+# target_link_libraries(test_id PRIVATE raisim::raisim Utils_lib)
 
-add_executable(test_osc test/osc.cpp)
-target_link_libraries(test_osc PRIVATE HOQP_lib)
+# add_executable(test_osc test/osc.cpp)
+# target_link_libraries(test_osc PRIVATE HOQP_lib)
 
-add_executable(test_nullspace test/nullspace_control.cpp)
-target_link_libraries(test_nullspace PRIVATE HOQP_lib)
+# add_executable(test_nullspace test/nullspace_control.cpp)
+# target_link_libraries(test_nullspace PRIVATE HOQP_lib)
 
-add_executable(test_bezier test/bezier_test.cpp)
-target_link_libraries(test_bezier PRIVATE TaskLS_lib)
+# add_executable(test_bezier test/bezier_test.cpp)
+# target_link_libraries(test_bezier PRIVATE TaskLS_lib)
 
-add_executable(test_base_qp test/base_qp.cpp)
-target_link_libraries(test_base_qp PRIVATE HOQP_lib)
+# add_executable(test_base_qp test/base_qp.cpp)
+# target_link_libraries(test_base_qp PRIVATE HOQP_lib)
 
-add_executable(test_osqp test/osqp_test.cpp)
-target_link_libraries(test_osqp PRIVATE OsqpEigen::OsqpEigen HOQP_lib)
+# add_executable(test_osqp test/osqp_test.cpp)
+# target_link_libraries(test_osqp PRIVATE OsqpEigen::OsqpEigen HOQP_lib)
 
 add_executable(test_convex_mpc test/convex_mpc.cpp)
 target_link_libraries(test_convex_mpc PUBLIC raisim::raisim)
 target_link_libraries(test_convex_mpc PRIVATE ConvexMPC_lib)
-target_link_libraries(test_convex_mpc PUBLIC pthread)
-target_include_directories(test_convex_mpc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+# target_link_libraries(test_convex_mpc PUBLIC pthread)
+# target_include_directories(test_convex_mpc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_executable(test_z1_spawn test/z1_spawn.cpp)
 target_link_libraries(test_z1_spawn PRIVATE raisim::raisim Utils_lib)
@@ -152,13 +144,16 @@ target_link_libraries(test_utils PRIVATE Utils_lib)
 add_executable(test_hoqp_slack test/hoqp_slack_test.cpp)
 target_link_libraries(test_hoqp_slack PRIVATE HOQP_lib)
 
-add_executable(test_slope test/slope_test.cpp)
-target_link_libraries(test_slope PRIVATE HOQP_lib)
+# add_executable(test_slope test/slope_test.cpp)
+# target_link_libraries(test_slope PRIVATE HOQP_lib)
 
 add_executable(test_linear_momentum test/linear_momentum_test.cpp)
 target_link_libraries(test_linear_momentum PRIVATE HOQP_lib)
 
 add_executable(test_momentum test/momentum_test.cpp)
 target_link_libraries(test_momentum PRIVATE HOQP_lib yaml-cpp::yaml-cpp)
+
+add_executable(test_robot_state test/robot_state_test.cpp)
+target_link_libraries(test_robot_state PRIVATE RobotStateRaisim_lib)
 # Copy resources (if applicable)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/rsc DESTINATION ${CMAKE_BINARY_DIR})

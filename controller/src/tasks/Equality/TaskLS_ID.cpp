@@ -1,13 +1,12 @@
 #include "TaskLS_ID.hpp"
 
-TaskLS_ID::TaskLS_ID(raisim::World* world, raisim::ArticulatedSystem* robot, const int task_dim, const int var_dim)
-: TaskLS(task_dim, var_dim), world_(world), robot_(robot)
+TaskLS_ID::TaskLS_ID(RobotState* robot_state, const int task_dim, const int var_dim)
+: TaskLS(task_dim, var_dim), robot_state_(robot_state)
 {
     task_name_ = "Inverse Dynamics";
-    contact_dim_ = 12;
-    gravity_ = world_->getGravity();
-    dof_ = robot_->getDOF();
-
+    dof_ = robot_state_->getDOF();
+    actuated_dof_ = robot_state_->getActuatedDOF();
+    contact_dim_ = robot_state_->getContactDim();
     M_ = Eigen::MatrixXd::Zero(dof_, dof_);
     h_ = Eigen::VectorXd::Zero(dof_);
 
@@ -17,8 +16,8 @@ TaskLS_ID::TaskLS_ID(raisim::World* world, raisim::ArticulatedSystem* robot, con
     J_c_RL_ = Eigen::MatrixXd::Zero(3, dof_);
     J_c_ = Eigen::MatrixXd::Zero(contact_dim_, dof_);
 
-    S_ = Eigen::MatrixXd::Zero(dof_-6, dof_);
-    S_.block(0,6,dof_-6,dof_-6) = Eigen::MatrixXd::Identity(dof_-6,dof_-6);
+    S_ = Eigen::MatrixXd::Zero(actuated_dof_, dof_);
+    S_.block(0,6,actuated_dof_,actuated_dof_) = Eigen::MatrixXd::Identity(actuated_dof_,actuated_dof_);
 
     A_ = Eigen::MatrixXd::Zero(task_dim_,var_dim_);
     b_ = Eigen::VectorXd::Zero(task_dim_);
@@ -29,18 +28,8 @@ TaskLS_ID::~TaskLS_ID(){}
 void TaskLS_ID::updateMatrix(){
     // std::cout << "ID Matrix PreUpdated" << std::endl;
 
-    M_ = robot_->getMassMatrix().e();
-    
-    robot_->getDenseFrameJacobian("FR_foot_fixed", J_c_FR_); // 3x18
-    robot_->getDenseFrameJacobian("FL_foot_fixed", J_c_FL_); // 3x18
-    robot_->getDenseFrameJacobian("RR_foot_fixed", J_c_RR_); // 3x18
-    robot_->getDenseFrameJacobian("RL_foot_fixed", J_c_RL_); // 3x18
-    // std::cout << "set J_c_" << std::endl;
-    // J_c_.block(0, 0, 6, robot_->getDOF()) = J_c_FR_;
-    J_c_.block(0, 0, 3, dof_) = J_c_FR_;
-    J_c_.block(3, 0, 3, dof_) = J_c_FL_;
-    J_c_.block(6, 0, 3, dof_) = J_c_RR_;
-    J_c_.block(9, 0, 3, dof_) = J_c_RL_;
+    M_ = robot_state_->getMassMatrix();
+    J_c_ = robot_state_->getContactJacobian();
     QR_decomposition();
     Eigen::MatrixXd A_tmp = Eigen::MatrixXd::Zero(dof_, var_dim_);
     A_tmp.block(0, 0, dof_, dof_) = M_;
@@ -49,7 +38,7 @@ void TaskLS_ID::updateMatrix(){
 }
 
 void TaskLS_ID::updateVector(){
-    b_ = -(Qu_.transpose()*(robot_->getNonlinearities(gravity_).e()));
+    b_ = -(Qu_.transpose()*(robot_state_->getNonlinearVector()));
 }
 
 void TaskLS_ID::QR_decomposition(){

@@ -5,13 +5,12 @@ class TaskLS_EnergyOpt: public TaskLS
 {
 
     public:
-        TaskLS_EnergyOpt(raisim::World* world, raisim::ArticulatedSystem* robot, const int var_dim=30);
+        TaskLS_EnergyOpt(RobotState* robot_state_, const int var_dim=30);
         ~TaskLS_EnergyOpt();
         void updateVector()override;
         void updateMatrix()override;
     
     private:
-        raisim::World* world_;
-        raisim::ArticulatedSystem* robot_;
+        RobotState* robot_state_;
         int dof_; 
 };

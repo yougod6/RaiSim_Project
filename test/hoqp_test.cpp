@@ -4,6 +4,7 @@
 #include "TaskLS_StationaryFeet.hpp"
 #include "TaskLS_MoveBase.hpp"
 #include "TaskLS_EnergyOpt.hpp"
+#include "RobotStateRaisim.hpp"
 #include "HOQP.hpp" 
 #include <memory>
 
@@ -45,10 +46,12 @@ int main (int argc, char* argv[]) {
 
     // std::cout << "generalizedCoordinate : " <<go1->getGeneralizedCoordinate().e().size() <<std::endl;
     // std::cout << "generalizedVelocity : " <<go1->getGeneralizedVelocity().e().size() <<std::endl;
-    std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(&world, go1);
-    std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(&world, go1);
-    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_MoveBase>(&world, go1,6,30,base_desired_x);
-    std::unique_ptr<TaskLS> task4 = std::make_unique<TaskLS_EnergyOpt>(&world, go1);
+    std::unique_ptr<RobotStateRaisim> robot_state_ptr = std::make_unique<RobotStateRaisim>(&world, go1);
+    robot_state_ptr->updateState();
+    std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(robot_state_ptr.get());
+    std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(robot_state_ptr.get());
+    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_MoveBase>(robot_state_ptr.get(),6,30,base_desired_x);
+    std::unique_ptr<TaskLS> task4 = std::make_unique<TaskLS_EnergyOpt>(robot_state_ptr.get());
     std::unique_ptr<HOQP> hoqp = std::make_unique<HOQP>();
     hoqp->addTask(task1.get());
     hoqp->addTask(task2.get());
@@ -65,6 +68,7 @@ int main (int argc, char* argv[]) {
     Eigen::VectorXd generalizedForce = Eigen::VectorXd::Zero(go1->getDOF());
     for (int i=0; i<totalT; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6);
+        robot_state_ptr->updateState();
       
         hoqp->solveAllTasks();
         solution_vector = hoqp->getSolution();

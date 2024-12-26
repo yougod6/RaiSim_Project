@@ -10,6 +10,7 @@
 #include "TaskLS_EnergyOpt.hpp"
 #include "TaskLS_TorqueLimits.hpp"
 #include "TaskLS_FrictionCone.hpp"
+#include "RobotStateRaisim.hpp"
 #include "HOQP.hpp" 
 #include "HOQP_Slack.hpp"
 #include "Utils.hpp"
@@ -141,6 +142,7 @@ int main (int argc, char* argv[]) {
 
     raisim::World world;
     auto ground = world.addGround(0., "brass");//, raisim::COLLISION(-1));
+    ground->setAppearance("1,1,1,1");    
     raisim::Vec<3> gravity = world.getGravity();
     world.setTimeStep(1/hz);
     auto binaryPath = raisim::Path::setFromArgv(argv[0]);
@@ -270,20 +272,22 @@ int main (int argc, char* argv[]) {
     Eigen::Vector3d position_weight = 200*Eigen::Vector3d::Ones(3);
     Eigen::Vector3d angular_weight = 100*Eigen::Vector3d::Ones(3);
 
-    std::unique_ptr<TaskLS> task_ID = std::make_unique<TaskLS_ID>(&world, robot, 12, 42);
-    std::unique_ptr<TaskLS> task_feet = std::make_unique<TaskLS_StationaryFeet>(&world, robot, 12, 42);
-    std::unique_ptr<TaskLS_StationaryEE> task_ee = std::make_unique<TaskLS_StationaryEE>(&world, robot, 6, 42, desired_x,300,2*sqrt(150));
-    std::unique_ptr<TaskLS_MoveBase> task_base = std::make_unique<TaskLS_MoveBase>(&world, robot, 6, 42, base_desired_x, 100, 2*sqrt(100));
-    std::unique_ptr<TaskLS> task_linear_momentum = std::make_unique<TaskLS_LinearMomentum>(&world, robot, 3, 42, rate_weight, position_weight);
-    std::unique_ptr<TaskLS> task_angular_momentum = std::make_unique<TaskLS_AngularMomentum>(&world, robot, 3, 42, angular_weight);
-    std::unique_ptr<TaskLS> task_Eopt = std::make_unique<TaskLS_EnergyOpt>(&world, robot, 42);
+    std::unique_ptr<RobotStateRaisim> robot_state_ptr = std::make_unique<RobotStateRaisim>(&world, robot);
+    robot_state_ptr->updateState();
+    std::unique_ptr<TaskLS> task_ID = std::make_unique<TaskLS_ID>(robot_state_ptr.get(), 12, 42);
+    std::unique_ptr<TaskLS> task_feet = std::make_unique<TaskLS_StationaryFeet>(robot_state_ptr.get(), 12, 42);
+    std::unique_ptr<TaskLS_StationaryEE> task_ee = std::make_unique<TaskLS_StationaryEE>(robot_state_ptr.get(), 6, 42, desired_x,300,2*sqrt(150));
+    std::unique_ptr<TaskLS_MoveBase> task_base = std::make_unique<TaskLS_MoveBase>(robot_state_ptr.get(), 6, 42, base_desired_x, 100, 2*sqrt(100));
+    std::unique_ptr<TaskLS> task_linear_momentum = std::make_unique<TaskLS_LinearMomentum>(robot_state_ptr.get(), 3, 42, rate_weight, position_weight);
+    std::unique_ptr<TaskLS> task_angular_momentum = std::make_unique<TaskLS_AngularMomentum>(robot_state_ptr.get(), 3, 42, angular_weight);
+    std::unique_ptr<TaskLS> task_Eopt = std::make_unique<TaskLS_EnergyOpt>(robot_state_ptr.get(), 42);
     
     Eigen::VectorXd tau_min = -40*Eigen::VectorXd::Ones(18);
     Eigen::VectorXd tau_max = 40*Eigen::VectorXd::Ones(18);
     tau_min.tail(6) << -30, -60, -30, -30, -30, -30;
     tau_max.tail(6) << 30, 60, 30, 30, 30, 30;
     std::unique_ptr<TaskLS> constraints_tau = std::make_unique<TaskLS_TorqueLimits>(tau_min, tau_max);
-    std::unique_ptr<TaskLS> constraints_cone = std::make_unique<TaskLS_FrictionCone>(&world, robot, 24,42,0.1);
+    std::unique_ptr<TaskLS> constraints_cone = std::make_unique<TaskLS_FrictionCone>(robot_state_ptr.get(), 24,42,0.1);
     std::unique_ptr<TaskSet> task_set1 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set2 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set3 = std::make_unique<TaskSet>(42);
@@ -414,6 +418,7 @@ int main (int argc, char* argv[]) {
     int i = 0;
     for (i=0; i<(10+traj_duration*5)*hz; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6)
+        robot_state_ptr->updateState();
         unknown_obj->setCom({0,((0.2)/3)*sin(4*i/hz),0});
         // auto w_R_obj = unknown_obj->getOrientation();
         obj_lm = unknown_obj->getLinearMomentum();

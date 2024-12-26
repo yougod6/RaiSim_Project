@@ -5,26 +5,20 @@ class TaskLS_FrictionCone: public TaskLS
 {
 
     public:
-        TaskLS_FrictionCone(raisim::World* world, raisim::ArticulatedSystem* robot, int task_dim=24, int var_dim=30, double mu=0.8);  
+        TaskLS_FrictionCone(RobotState* robot_state, int task_dim=24, int var_dim=30, double mu=0.8);  
         ~TaskLS_FrictionCone();
         void updateVector()override;
         void updateMatrix()override;
         Eigen::VectorXd getStackedContactForces();
 
     private:
-        raisim::World* world_;
-        raisim::ArticulatedSystem* robot_;
-        raisim::Vec<3> gravity_;
+        RobotState* robot_state_;   
         double dof_;
 
         Eigen::MatrixXd S_; //selection matrix
         Eigen::MatrixXd M_;
         Eigen::VectorXd h_;
 
-        Eigen::MatrixXd J_c_FR_; 
-        Eigen::MatrixXd J_c_FL_;
-        Eigen::MatrixXd J_c_RR_;
-        Eigen::MatrixXd J_c_RL_;
         Eigen::MatrixXd J_c_;
         Eigen::MatrixXd Q_;
         Eigen::MatrixXd Qc_;

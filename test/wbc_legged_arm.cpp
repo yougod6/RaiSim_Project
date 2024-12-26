@@ -8,6 +8,7 @@
 #include "TaskLS_EnergyOpt.hpp"
 #include "TaskLS_TorqueLimits.hpp"
 #include "TaskLS_FrictionCone.hpp"
+#include "RobotStateRaisim.hpp"
 #include "HOQP.hpp" 
 #include "HOQP_Slack.hpp"
 #include "Utils.hpp"
@@ -115,19 +116,21 @@ int main (int argc, char* argv[]) {
                     0,
                     0;
     }
-            
-    std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(&world, robot, 12, 42);
-    std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(&world, robot, 12, 42);
-    std::unique_ptr<TaskLS_StationaryEE> task3 = std::make_unique<TaskLS_StationaryEE>(&world, robot, 6, 42, desired_x,300,2*sqrt(150));
-    std::unique_ptr<TaskLS_MoveBase> task4 = std::make_unique<TaskLS_MoveBase>(&world, robot, 6, 42, base_desired_x);
-    std::unique_ptr<TaskLS> task5 = std::make_unique<TaskLS_EnergyOpt>(&world, robot, 42);
+    
+    std::unique_ptr<RobotStateRaisim> robot_state_ptr = std::make_unique<RobotStateRaisim>(&world, robot);
+    robot_state_ptr->updateState();        
+    std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(robot_state_ptr.get(), 12, 42);
+    std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(robot_state_ptr.get(), 12, 42);
+    std::unique_ptr<TaskLS_StationaryEE> task3 = std::make_unique<TaskLS_StationaryEE>(robot_state_ptr.get(), 6, 42, desired_x,300,2*sqrt(150));
+    std::unique_ptr<TaskLS_MoveBase> task4 = std::make_unique<TaskLS_MoveBase>(robot_state_ptr.get(), 6, 42, base_desired_x);
+    std::unique_ptr<TaskLS> task5 = std::make_unique<TaskLS_EnergyOpt>(robot_state_ptr.get(), 42);
     
     Eigen::VectorXd tau_min = -40*Eigen::VectorXd::Ones(18);
     Eigen::VectorXd tau_max = 40*Eigen::VectorXd::Ones(18);
     tau_min.tail(6) = -33*Eigen::VectorXd::Ones(6);
     tau_max.tail(6) = 33*Eigen::VectorXd::Ones(6);
     std::unique_ptr<TaskLS> constraints1 = std::make_unique<TaskLS_TorqueLimits>(tau_min, tau_max);
-    std::unique_ptr<TaskLS> constraints2 = std::make_unique<TaskLS_FrictionCone>(&world, robot, 24,42,0.2);
+    std::unique_ptr<TaskLS> constraints2 = std::make_unique<TaskLS_FrictionCone>(robot_state_ptr.get(), 24,42,0.2);
 
     std::unique_ptr<TaskSet> task_set1 = std::make_unique<TaskSet>(42);
     std::unique_ptr<TaskSet> task_set2 = std::make_unique<TaskSet>(42);
@@ -184,6 +187,7 @@ int main (int argc, char* argv[]) {
 
     for (int i=0; i<100000; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6)
+        robot_state_ptr->updateState();        
         get_contact_feet(robot, contact_feet);
         hoqp->solveAllTasks();
         solution_vector = hoqp->getSolution();

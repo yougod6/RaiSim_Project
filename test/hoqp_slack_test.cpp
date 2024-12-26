@@ -8,6 +8,7 @@
 #include "TaskLS_EnergyOpt.hpp"
 #include "TaskLS_TorqueLimits.hpp"
 #include "TaskLS_FrictionCone.hpp"
+#include "RobotStateRaisim.hpp"
 #include "HOQP_Slack.hpp" 
 #include "TaskSet.hpp"
 #include <memory>
@@ -40,15 +41,17 @@ int main (int argc, char* argv[]) {
                     0,
                     0;
 
-    std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(&world, robot);
-    std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(&world, robot);
-    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_MoveBase>(&world, robot,6,30,base_desired_x);
-    std::unique_ptr<TaskLS> task4 = std::make_unique<TaskLS_EnergyOpt>(&world, robot);
+    std::unique_ptr<RobotStateRaisim> robot_state_ptr = std::make_unique<RobotStateRaisim>(&world, robot);
+    robot_state_ptr->updateState();
+    std::unique_ptr<TaskLS> task1 = std::make_unique<TaskLS_ID>(robot_state_ptr.get());
+    std::unique_ptr<TaskLS> task2 = std::make_unique<TaskLS_StationaryFeet>(robot_state_ptr.get());
+    std::unique_ptr<TaskLS> task3 = std::make_unique<TaskLS_MoveBase>(robot_state_ptr.get(),6,30,base_desired_x);
+    std::unique_ptr<TaskLS> task4 = std::make_unique<TaskLS_EnergyOpt>(robot_state_ptr.get());
     
     Eigen::VectorXd tau_min = -40*Eigen::VectorXd::Ones(12);
     Eigen::VectorXd tau_max = 40*Eigen::VectorXd::Ones(12);
     std::unique_ptr<TaskLS> constraint1 = std::make_unique<TaskLS_TorqueLimits>(tau_min,tau_max);
-    std::unique_ptr<TaskLS> constraint2 = std::make_unique<TaskLS_FrictionCone>(&world, robot);   
+    std::unique_ptr<TaskLS> constraint2 = std::make_unique<TaskLS_FrictionCone>(robot_state_ptr.get());   
     int var_dim = 30;
     std::unique_ptr<TaskSet> task_set1 = std::make_unique<TaskSet>(var_dim);
     std::unique_ptr<TaskSet> task_set2 = std::make_unique<TaskSet>(var_dim);
@@ -88,6 +91,7 @@ int main (int argc, char* argv[]) {
 
     for (int i=0; i<totalT; i++) {
         RS_TIMED_LOOP(world.getTimeStep()*1e6);
+        robot_state_ptr->updateState();
         hoqp->solveAllTasks();
         solution_vector = hoqp->getSolution();
 

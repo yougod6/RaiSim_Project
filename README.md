@@ -1,10 +1,34 @@
-raisim example
-==========================
+# Raisim Example
+This is a Raisim example demonstrating **convex-MPC (Model Predictive Control)** for quadruped robots and **HWBC(Hierarchical Whole-Body Control)** for legged mobile manipulators.
 
-how to build
---------------------------
-Assuming that you already have installed raisim,
+## Dependencies
+This project uses the following external libraries:
 
-- Create the working directory: ``mkdir build && cd build``
-- Run cmake: ``cmake .. -DCMAKE_PREFIX_PATH=${LOCAL_INSTALL}``
-- Build: ``make``
+- [Raisim](https://raisim.com/) - Physics simulation library
+- [Eigen](https://eigen.tuxfamily.org/dox/) - Linear algebra library
+- [OsqpEigen](https://github.com/robotology/osqp-eigen) - Quadratic programming solver
+
+## How to Use
+1. **Install Raisim**  
+   Follow the instructions on the [Raisim official website](https://raisim.com/) to install the library.
+
+2. **Build the Project**  
+   Run the following commands to build the project:
+
+   ```bash
+   mkdir build && cd build
+   cmake .. 
+   make
+
+## Demonstrations
+
+### Convex-MPC
+
+<p align="center">
+  <img src="assets/convexMPC_aliengo.gif" alt="Convex MPC Aliengo" width="45%">
+  <img src="assets/convexMPC_go1.gif" alt="Convex MPC Go1" width="45%">
+</p>
+
+### HWBC
+<img src="assets/configuration.png" alt="Convex MPC Aliengo" width="45%">
+<img src="assets/convexMPC_aliengo.gif" alt="Convex MPC Aliengo" width="45%">

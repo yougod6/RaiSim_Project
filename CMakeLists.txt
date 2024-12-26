@@ -102,11 +102,11 @@ target_link_libraries(ConvexMPC_lib PUBLIC Utils_lib OsqpEigenSolver_lib)
 
 
 # Add executables
-# add_executable(test_joint_impedance test/joint_impedance.cpp)
-# target_link_libraries(test_joint_impedance PRIVATE raisim::raisim Utils_lib)
+add_executable(test_joint_impedance test/joint_impedance.cpp)
+target_link_libraries(test_joint_impedance PRIVATE raisim::raisim Utils_lib)
 
-# add_executable(test_id test/id_test.cpp)
-# target_link_libraries(test_id PRIVATE raisim::raisim Utils_lib)
+add_executable(test_id test/id_test.cpp)
+target_link_libraries(test_id PRIVATE raisim::raisim Utils_lib)
 
 # add_executable(test_osc test/osc.cpp)
 # target_link_libraries(test_osc PRIVATE HOQP_lib)

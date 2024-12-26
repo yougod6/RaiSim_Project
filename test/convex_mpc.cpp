@@ -208,14 +208,11 @@ int main (int argc, char* argv[]) {
         C = mpc_solver.get_constraint_matrix();
         lb = mpc_solver.get_lb();
         ub = mpc_solver.get_ub();
-        std::cout << "MPC QP Conversion done" << std::endl;
+
         // QP Solver
         solver->init(H, g, C, lb, ub, false);
-        std::cout << "solver init done" << std::endl;
         solver->solve();
-        std::cout << "solver solve done" << std::endl;
         u = solver->getSolution();
-        std::cout << "QP Solver done" << std::endl;
 
         for(int i=0; i<4; i++){
             foot_grf.block(0,i,3,1) = u.segment(i*3,3);
